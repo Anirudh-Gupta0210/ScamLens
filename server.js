@@ -1,4 +1,3 @@
-
 const express = require("express");
 const dotenv = require("dotenv");
 const net = require("node:net");
@@ -547,6 +546,118 @@ async function checkUrlhaus(url) {
     }
 }
 
+// VirusTotal checks an existing URL report only.
+// ScamLens does not submit new URLs for analysis.
+async function checkVirusTotal(url) {
+    const apiKey = process.env.VIRUSTOTAL_API_KEY;
+
+    if (!apiKey || !apiKey.trim()) {
+        return {
+            status: "not_configured",
+            provider: "VirusTotal",
+            message: "VirusTotal is not configured."
+        };
+    }
+
+    try {
+        const urlId = Buffer.from(url).toString("base64url");
+
+        const response = await fetch(
+            `https://www.virustotal.com/api/v3/urls/${urlId}`,
+            {
+                method: "GET",
+                headers: {
+                    "x-apikey": apiKey.trim()
+                },
+                signal: AbortSignal.timeout(8000)
+            }
+        );
+
+        if (response.status === 404) {
+            return {
+                status: "no_report",
+                provider: "VirusTotal",
+                message:
+                    "VirusTotal has no existing report for this URL."
+            };
+        }
+
+        if (response.status === 429) {
+            return {
+                status: "unavailable",
+                provider: "VirusTotal",
+                message:
+                    "VirusTotal rate limit reached. Try again later."
+            };
+        }
+
+        if (!response.ok) {
+            console.error(
+                "VirusTotal returned HTTP status:",
+                response.status
+            );
+
+            return {
+                status: "unavailable",
+                provider: "VirusTotal",
+                message:
+                    "VirusTotal could not complete the reputation check."
+            };
+        }
+
+        const data = await response.json();
+        const attributes = data?.data?.attributes;
+        const stats = attributes?.last_analysis_stats;
+
+        if (!stats || typeof stats !== "object") {
+            return {
+                status: "no_report",
+                provider: "VirusTotal",
+                message:
+                    "VirusTotal has no usable existing analysis for this URL."
+            };
+        }
+
+        const malicious = Number(stats.malicious) || 0;
+        const suspicious = Number(stats.suspicious) || 0;
+
+        return {
+            status:
+                malicious > 0
+                    ? "malicious"
+                    : suspicious > 0
+                        ? "suspicious"
+                        : "analyzed",
+            provider: "VirusTotal",
+            malicious,
+            suspicious,
+            harmless: Number(stats.harmless) || 0,
+            undetected: Number(stats.undetected) || 0,
+            lastAnalysisDate: attributes.last_analysis_date
+                ? new Date(
+                    attributes.last_analysis_date * 1000
+                ).toISOString()
+                : null,
+            message: malicious > 0
+                ? `VirusTotal reports ${malicious} malicious engine detection(s) for this URL.`
+                : suspicious > 0
+                    ? `VirusTotal reports ${suspicious} suspicious engine detection(s) for this URL.`
+                    : "VirusTotal reported no malicious or suspicious detections in its last analysis. This does not guarantee safety."
+        };
+    } catch (error) {
+        console.error(
+            "VirusTotal check failed:",
+            error.name || "Unknown error"
+        );
+
+        return {
+            status: "unavailable",
+            provider: "VirusTotal",
+            message: "VirusTotal could not be reached."
+        };
+    }
+}
+
 app.post("/api/scan", async (req, res) => {
     const submittedUrl = req.body?.url;
 
@@ -594,7 +705,12 @@ app.post("/api/scan", async (req, res) => {
 
     const urlAnalysis = analyseUrl(parsedUrl);
     const shoppingAnalysis = analyseShoppingUrl(parsedUrl);
-    const reputation = await checkUrlhaus(parsedUrl.href);
+
+    // Run both reputation providers concurrently.
+    const [reputation, virusTotal] = await Promise.all([
+        checkUrlhaus(parsedUrl.href),
+        checkVirusTotal(parsedUrl.href)
+    ]);
 
     let score = Math.min(
         urlAnalysis.score + shoppingAnalysis.score,
@@ -606,6 +722,7 @@ app.post("/api/scan", async (req, res) => {
         ...shoppingAnalysis.signals
     ];
 
+    // URLhaus result.
     if (reputation.status === "listed") {
         score = Math.min(score + 60, 100);
 
@@ -624,13 +741,58 @@ app.post("/api/scan", async (req, res) => {
         findings.push({
             points: 0,
             message:
-                "The URLhaus reputation check was unavailable. The result uses local URL checks only."
+                "The URLhaus reputation check was unavailable. The result uses local URL checks and any available reputation results."
         });
     } else {
         findings.push({
             points: 0,
             message:
-                "URLhaus is not configured. The result uses local URL checks only."
+                "URLhaus is not configured. Other ScamLens checks still ran."
+        });
+    }
+
+    // VirusTotal result.
+    if (virusTotal.status === "malicious") {
+        const points = virusTotal.malicious >= 3 ? 45 : 35;
+
+        score = Math.min(score + points, 100);
+
+        findings.push({
+            points,
+            message:
+                `VirusTotal reports ${virusTotal.malicious} malicious engine detection(s) for this URL.`
+        });
+    } else if (virusTotal.status === "suspicious") {
+        score = Math.min(score + 10, 100);
+
+        findings.push({
+            points: 10,
+            message:
+                `VirusTotal reports ${virusTotal.suspicious} suspicious engine detection(s) for this URL.`
+        });
+    } else if (virusTotal.status === "analyzed") {
+        findings.push({
+            points: 0,
+            message:
+                "VirusTotal reported no malicious or suspicious detections in its last analysis. This does not guarantee safety."
+        });
+    } else if (virusTotal.status === "no_report") {
+        findings.push({
+            points: 0,
+            message:
+                "VirusTotal has no existing report for this URL; this is not proof that the site is safe."
+        });
+    } else if (virusTotal.status === "unavailable") {
+        findings.push({
+            points: 0,
+            message:
+                "The VirusTotal reputation check was unavailable. Other ScamLens checks still ran."
+        });
+    } else {
+        findings.push({
+            points: 0,
+            message:
+                "VirusTotal is not configured. Other ScamLens checks still ran."
         });
     }
 
@@ -653,9 +815,10 @@ app.post("/api/scan", async (req, res) => {
         },
 
         reputation,
+        virusTotal,
 
         disclaimer:
-            "This is a preliminary risk assessment, not a verified fraud verdict or probability of fraud. Shopping-domain checks are heuristic and may flag legitimate sites. URLhaus focuses on URLs associated with malware distribution and does not detect every phishing or shopping scam. A URL not listed by URLhaus is not guaranteed to be safe. ScamLens does not visit the submitted website."
+            "This is a preliminary risk assessment, not a verified fraud verdict or probability of fraud. Shopping-domain checks are heuristic and may flag legitimate sites. URLhaus focuses on URLs associated with malware distribution and does not detect every phishing or shopping scam. A URL not listed by URLhaus, or one with no VirusTotal detections, is not guaranteed to be safe. VirusTotal results reflect an existing third-party analysis and may be unavailable or outdated. ScamLens does not visit or submit the URL for a new scan."
     });
 });
 

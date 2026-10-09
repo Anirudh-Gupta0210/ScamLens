@@ -116,8 +116,6 @@ Shop confidently. Check suspicious links before you buy.
 
 <a href="#scanner">URL Scanner</a>
             <a href="#scan-history">Scan History</a>
-            <a href="#price-checker">Price Checker</a>
-            <a href="#analytics-dashboard">Analytics</a>
 
 
 
@@ -547,29 +545,6 @@ Enter a website URL to run a preliminary risk analysis.
 
 </section>
 
-
-<section class="scanner-section" id="price-checker" style="padding-top:30px;">
-    <div class="section-heading">
-        <span class="eyebrow">DEAL REALITY CHECK</span>
-        <h2>Suspicious Price Checker</h2>
-        <p>Check a claimed discount before you buy. A large discount is a warning sign to investigate, not proof of a scam.</p>
-    </div>
-    <form id="priceCheckerForm" class="scanner-form" style="flex-wrap:wrap;">
-        <div class="url-input-wrap" style="flex:1 1 200px;">
-            <i class="fa-solid fa-indian-rupee-sign"></i>
-            <input id="originalPrice" type="number" min="0.01" step="0.01" placeholder="Original price (₹)" aria-label="Original price" required>
-        </div>
-        <div class="url-input-wrap" style="flex:1 1 200px;">
-            <i class="fa-solid fa-tag"></i>
-            <input id="salePrice" type="number" min="0" step="0.01" placeholder="Sale price (₹)" aria-label="Sale price" required>
-        </div>
-        <button type="submit"><i class="fa-solid fa-calculator"></i> Check discount</button>
-    </form>
-    <div id="priceCheckerResult" class="scanner-message" aria-live="polite" role="status">
-        Enter the original price and sale price to calculate the claimed discount.
-    </div>
-</section>
-
 <section class="scanner-section" id="scan-history" style="padding-top:30px;">
     <div class="section-heading">
         <span class="eyebrow">YOUR RECENT CHECKS</span>
@@ -583,20 +558,6 @@ Enter a website URL to run a preliminary risk analysis.
     <p style="text-align:center;font-size:12px;color:#687385;margin-top:12px;">
         History is stored locally in your browser and is not uploaded to the ScamLens server.
     </p>
-</section>
-
-<section class="scanner-section" id="analytics-dashboard" style="padding-top:30px;">
-    <div class="section-heading">
-        <span class="eyebrow">YOUR SCAMLENS ACTIVITY</span>
-        <h2>Analytics Dashboard</h2>
-        <p>A quick overview based on scans saved in this browser.</p>
-    </div>
-    <div id="analyticsCards" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:14px;"></div>
-    <div style="margin-top:18px;padding:18px;border:1px solid #e6e9ef;border-radius:14px;background:#fff;">
-        <h3 style="margin:0 0 12px;font-size:16px;">Recent activity</h3>
-        <div id="analyticsRecent"></div>
-    </div>
-    <p style="font-size:11px;line-height:1.7;color:#687385;margin-top:12px;">Statistics include only URL scans saved in this browser (up to 20). They are not global ScamLens usage statistics.</p>
 </section>
 
 <section class="features-section" id="features">
@@ -972,7 +933,6 @@ function saveScanToHistory(result) {
         console.warn("Could not save ScamLens scan history.", error);
     }
     renderScanHistory();
-    renderAnalyticsDashboard();
 }
 
 function renderScanHistory() {
@@ -1040,9 +1000,7 @@ function renderScanHistory() {
         remove.style.cssText = "cursor:pointer;padding:9px 12px;border:1px solid #e6e9ef;border-radius:8px;background:#fff;color:#687385;font-weight:700;";
         remove.addEventListener("click", () => {
             localStorage.setItem(HISTORY_KEY, JSON.stringify(getScanHistory().filter(item => item.id !== entry.id)));
-    
             renderScanHistory();
-            renderAnalyticsDashboard();
         });
 
         actions.append(rescan, remove);
@@ -1051,137 +1009,13 @@ function renderScanHistory() {
     });
 }
 
-function renderAnalyticsDashboard() {
-    const cards = document.getElementById("analyticsCards");
-    const recent = document.getElementById("analyticsRecent");
-    if (!cards || !recent) return;
-
-    const history = getScanHistory();
-    const total = history.length;
-    const highRisk = history.filter(item => Number(item.score) >= 50).length;
-    const caution = history.filter(item => Number(item.score) >= 25 && Number(item.score) < 50).length;
-    const average = total ? Math.round(history.reduce((sum, item) => sum + (Number(item.score) || 0), 0) / total) : 0;
-
-    cards.replaceChildren();
-    const metrics = [
-        { label: "Saved URL scans", value: total, icon: "fa-magnifying-glass", color: "#365fc7", tint: "#eef3ff" },
-        { label: "Higher-risk links (50+)", value: highRisk, icon: "fa-triangle-exclamation", color: "#c62845", tint: "#fff0f2" },
-        { label: "Use-caution links (25–49)", value: caution, icon: "fa-circle-exclamation", color: "#a66b00", tint: "#fff6df" },
-        { label: "Average risk score", value: `${average}/100`, icon: "fa-chart-line", color: "#16834a", tint: "#eaf8ef" }
-    ];
-
-    metrics.forEach(metric => {
-        const card = document.createElement("article");
-        card.style.cssText = `padding:20px;border:1px solid #e6e9ef;border-radius:14px;background:#fff;box-shadow:0 5px 18px rgba(32,38,50,.04);`;
-        const icon = document.createElement("div");
-        icon.innerHTML = `<i class="fa-solid ${metric.icon}"></i>`;
-        icon.style.cssText = `width:38px;height:38px;display:grid;place-items:center;border-radius:10px;background:${metric.tint};color:${metric.color};`;
-        const label = document.createElement("p");
-        label.textContent = metric.label;
-        label.style.cssText = "margin:14px 0 5px;color:#687385;font-size:12px;line-height:1.5;";
-        const value = document.createElement("p");
-        value.textContent = String(metric.value);
-        value.style.cssText = `margin:0;color:${metric.color};font-size:28px;font-weight:800;`;
-        card.append(icon, label, value);
-        cards.appendChild(card);
-    });
-
-    recent.replaceChildren();
-    if (!history.length) {
-        const empty = document.createElement("p");
-        empty.textContent = "No scan activity yet. Scan a URL to start building your dashboard.";
-        empty.style.cssText = "margin:0;color:#687385;font-size:13px;line-height:1.7;";
-        recent.appendChild(empty);
-        return;
-    }
-
-    history.slice(0, 5).forEach(item => {
-        const row = document.createElement("div");
-        row.style.cssText = "display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;padding:12px 0;border-bottom:1px solid #edf0f4;";
-        const url = document.createElement("span");
-        url.textContent = item.url || "Unknown URL";
-        url.style.cssText = "min-width:0;flex:1;overflow-wrap:anywhere;font-size:12px;color:#202632;";
-        const score = Number(item.score) || 0;
-        const badge = document.createElement("span");
-        badge.textContent = `${score}/100`;
-        const color = score >= 50 ? "#c62845" : score >= 25 ? "#a66b00" : "#16834a";
-        const tint = score >= 50 ? "#fff0f2" : score >= 25 ? "#fff6df" : "#eaf8ef";
-        badge.style.cssText = `padding:6px 9px;border-radius:8px;background:${tint};color:${color};font-size:11px;font-weight:800;`;
-        row.append(url, badge);
-        recent.appendChild(row);
-    });
-}
-
 clearHistoryButton.addEventListener("click", () => {
     if (!getScanHistory().length) return;
     if (confirm("Clear all saved ScamLens scan history?")) {
         localStorage.removeItem(HISTORY_KEY);
         renderScanHistory();
-        renderAnalyticsDashboard();
     }
 });
-
-// Suspicious Price Checker: client-side calculation, no data is uploaded.
-        const priceCheckerForm = document.getElementById("priceCheckerForm");
-        const originalPriceInput = document.getElementById("originalPrice");
-        const salePriceInput = document.getElementById("salePrice");
-        const priceCheckerResult = document.getElementById("priceCheckerResult");
-
-        priceCheckerForm.addEventListener("submit", function (event) {
-            event.preventDefault();
-            const originalPrice = Number(originalPriceInput.value);
-            const salePrice = Number(salePriceInput.value);
-
-            priceCheckerResult.replaceChildren();
-            priceCheckerResult.className = "scanner-message";
-
-            if (!Number.isFinite(originalPrice) || !Number.isFinite(salePrice) || originalPrice <= 0 || salePrice < 0 || salePrice >= originalPrice) {
-                priceCheckerResult.className = "scanner-message message-error";
-                priceCheckerResult.textContent = "Enter a positive original price and a sale price that is zero or higher but lower than the original price.";
-                return;
-            }
-
-            const discount = ((originalPrice - salePrice) / originalPrice) * 100;
-            const saved = originalPrice - salePrice;
-            let label = "Moderate claimed discount";
-            let color = "#a66b00";
-            let background = "#fff6df";
-            let advice = "Compare the price with other trusted retailers and check the seller's reputation.";
-
-            if (discount >= 80) {
-                label = "Very large discount — investigate carefully";
-                color = "#c62845";
-                background = "#fff0f2";
-                advice = "An 80% or larger discount can be genuine, but it deserves extra checking. Verify the seller, compare prices at official stores, and avoid unusual payment requests.";
-            } else if (discount >= 50) {
-                label = "Large discount — double-check the deal";
-                color = "#a66b00";
-                background = "#fff6df";
-                advice = "Check whether the original price is realistic and compare the same product across trusted retailers.";
-            } else {
-                label = "Discount calculated";
-                color = "#16834a";
-                background = "#eaf8ef";
-                advice = "The discount alone does not indicate whether the seller is trustworthy. Check the website and seller before paying.";
-            }
-
-            const resultCard = document.createElement("div");
-            resultCard.style.cssText = `margin-top:12px;padding:18px;border-radius:12px;background:${background};color:#202632;text-align:left;`;
-            const resultTitle = document.createElement("h3");
-            resultTitle.textContent = label;
-            resultTitle.style.cssText = `margin:0 0 12px;color:${color};font-size:17px;`;
-            const details = document.createElement("p");
-            details.textContent = `Claimed discount: ${discount.toFixed(1)}% · You save ₹${saved.toLocaleString("en-IN", {minimumFractionDigits: 2, maximumFractionDigits: 2})}. Sale price: ₹${salePrice.toLocaleString("en-IN", {minimumFractionDigits: 2, maximumFractionDigits: 2})}.`;
-            details.style.cssText = "font-size:13px;line-height:1.8;margin:0 0 10px;";
-            const adviceText = document.createElement("p");
-            adviceText.textContent = advice;
-            adviceText.style.cssText = "font-size:12px;line-height:1.8;margin:0;";
-            const disclaimer = document.createElement("p");
-            disclaimer.textContent = "This tool only calculates the claimed discount. It cannot verify whether the original price is genuine or determine whether a product is a scam.";
-            disclaimer.style.cssText = "font-size:11px;line-height:1.7;color:#687385;margin:12px 0 0;";
-            resultCard.append(resultTitle, details, adviceText, disclaimer);
-            priceCheckerResult.appendChild(resultCard);
-        });
 
 function showResults(result) {
 
@@ -1591,7 +1425,80 @@ function showResults(result) {
 
 
 
-    // Final disclaimer
+    // Card 4: VirusTotal intelligence
+    const virusTotal = result.virusTotal || {};
+    const virusTotalCard = createCard(
+        "🔎 VirusTotal Intelligence",
+        "Detection counts from VirusTotal's existing URL analysis."
+    );
+
+    const vtStatus = virusTotal.status || "unavailable";
+    const vtStyles = {
+        malicious: { label: "MALICIOUS DETECTIONS FOUND", color: "#b42336", background: "#fff0f2" },
+        suspicious: { label: "SUSPICIOUS DETECTIONS FOUND", color: "#a66b00", background: "#fff6df" },
+        analyzed: { label: "ANALYSIS AVAILABLE", color: "#247447", background: "#eaf8ef" },
+        no_report: { label: "NO EXISTING REPORT", color: "#596579", background: "#f0f2f6" },
+        not_configured: { label: "NOT CONFIGURED", color: "#596579", background: "#f0f2f6" },
+        unavailable: { label: "CHECK UNAVAILABLE", color: "#8a5700", background: "#fff6df" }
+    };
+    const vtStyle = vtStyles[vtStatus] || vtStyles.unavailable;
+
+    const vtBadge = document.createElement("div");
+    vtBadge.textContent = vtStyle.label;
+    vtBadge.style.cssText = `display:inline-block;padding:9px 12px;border-radius:8px;background:${vtStyle.background};color:${vtStyle.color};font-size:11px;font-weight:800;`;
+    virusTotalCard.appendChild(vtBadge);
+
+    const vtMessage = document.createElement("p");
+    vtMessage.textContent = virusTotal.message || "VirusTotal could not provide a reputation result.";
+    vtMessage.style.cssText = "font-size:12px;line-height:1.8;color:#4d5666;margin:14px 0;";
+    virusTotalCard.appendChild(vtMessage);
+
+    if (["malicious", "suspicious", "analyzed"].includes(vtStatus)) {
+        const statsGrid = document.createElement("div");
+        statsGrid.style.cssText = "display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:12px;margin-top:16px;";
+
+        const stats = [
+            { label: "Malicious", value: virusTotal.malicious ?? 0, color: "#b42336", background: "#fff0f2" },
+            { label: "Suspicious", value: virusTotal.suspicious ?? 0, color: "#a66b00", background: "#fff6df" },
+            { label: "Harmless", value: virusTotal.harmless ?? 0, color: "#247447", background: "#eaf8ef" },
+            { label: "Undetected", value: virusTotal.undetected ?? 0, color: "#365fc7", background: "#eef3ff" }
+        ];
+
+        stats.forEach(stat => {
+            const box = document.createElement("div");
+            box.style.cssText = `padding:16px;border-radius:10px;background:${stat.background};`;
+
+            const label = document.createElement("p");
+            label.textContent = stat.label;
+            label.style.cssText = "font-size:12px;margin:0 0 8px;color:#596579;";
+
+            const value = document.createElement("p");
+            const count = Number(stat.value);
+            value.textContent = Number.isFinite(count) && count >= 0 ? String(count) : "0";
+            value.style.cssText = `font-size:24px;font-weight:800;margin:0;color:${stat.color};`;
+
+            box.append(label, value);
+            statsGrid.appendChild(box);
+        });
+
+        virusTotalCard.appendChild(statsGrid);
+    }
+
+    if (virusTotal.lastAnalysisDate) {
+        addLabelValue(
+            virusTotalCard,
+            "Last analysis",
+            new Date(virusTotal.lastAnalysisDate).toLocaleString()
+        );
+    }
+
+    const vtNote = document.createElement("p");
+    vtNote.textContent = "VirusTotal checks an existing third-party report. No detections does not guarantee safety, and a missing report does not mean a website is safe.";
+    vtNote.style.cssText = "font-size:11px;line-height:1.7;color:#687385;margin:16px 0 0;";
+    virusTotalCard.appendChild(vtNote);
+    scanResults.appendChild(virusTotalCard);
+
+    // Final disclaimer
 
     const disclaimerCard = document.createElement("p");
 
@@ -1606,7 +1513,7 @@ function showResults(result) {
 
 
         renderScanHistory();
-        renderAnalyticsDashboard();
+
         scannerForm.addEventListener("submit", async function (event) {
 
 
@@ -1736,7 +1643,7 @@ scannerMessage.className = "scanner-message message-info";
 
 
 
-scannerMessage.textContent = "URL analysis complete. Review the URLhaus reputation result and warning signals below.";
+scannerMessage.textContent = "URL analysis complete. Review the URLhaus and VirusTotal reputation results and warning signals below.";
 
 
 
