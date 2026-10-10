@@ -3375,3 +3375,24 @@ body.auth-locked { overflow: hidden; }
     .auth-form { gap: 8px; }
 }
 
+
+
+/* ScamLens evidence-first scan dashboard */
+.scan-risk-meter-wrap { margin: 18px 0 4px; }
+.scan-risk-meter-meta { display:flex; justify-content:space-between; gap:12px; margin-bottom:8px; color:var(--muted, #687385); font-size:11px; font-weight:700; }
+.scan-risk-meter-track { height:10px; overflow:hidden; border-radius:999px; background:#edf0f5; }
+.scan-risk-meter-fill { height:100%; min-width:0; border-radius:999px; transition:width .45s ease; }
+.scan-interpretation { margin-top:16px; padding:16px 17px; border:1px solid var(--border, #e6e9ef); border-left:4px solid var(--primary, #ff3f6c); border-radius:12px; background:linear-gradient(135deg, #fff 0%, #f8faff 100%); }
+.scan-interpretation strong { display:block; margin-bottom:5px; color:var(--text, #202632); font-size:13px; }
+.scan-interpretation p { margin:0; color:var(--muted, #687385); font-size:12px; line-height:1.75; }
+.scan-coverage-grid { display:grid; grid-template-columns:repeat(2, minmax(0, 1fr)); gap:12px; margin-top:8px; }
+.scan-coverage-item { min-width:0; padding:15px; border:1px solid var(--border, #e6e9ef); border-radius:12px; background:#fbfcfe; }
+.scan-coverage-top { display:flex; align-items:flex-start; justify-content:space-between; gap:10px; flex-wrap:wrap; }
+.scan-coverage-top strong { color:var(--text, #202632); font-size:12px; }
+.scan-coverage-state { display:inline-flex; padding:5px 8px; border-radius:999px; font-size:10px; font-weight:800; line-height:1.4; }
+.scan-coverage-state.is-complete { color:#247447; background:#eaf8ef; }
+.scan-coverage-state.is-warning { color:#a52b3f; background:#fff0f2; }
+.scan-coverage-state.is-unknown { color:#7b5a10; background:#fff6df; }
+.scan-coverage-item p { margin:8px 0 0; color:var(--muted, #687385); font-size:11px; line-height:1.65; }
+@media (max-width: 600px) { .scan-coverage-grid { grid-template-columns:1fr; } .scan-risk-meter-meta { font-size:10px; } }
+@media (prefers-reduced-motion: reduce) { .scan-risk-meter-fill { transition:none; } }

@@ -196,7 +196,6 @@ function analyseUrl(parsedUrl) {
 
 // Approximate registered-domain extraction.
 // This is not a complete Public Suffix List implementation.
-
 function getApproximateRegisteredDomain(hostname) {
     const labels = hostname
         .toLowerCase()
@@ -281,7 +280,6 @@ function analyseShoppingUrl(parsedUrl) {
     }
 
     // Brand impersonation and lookalike detection.
-
     for (const [brand, officialDomains] of Object.entries(
         shoppingBrandDomains
     )) {
@@ -356,7 +354,6 @@ function analyseShoppingUrl(parsedUrl) {
     }
 
     // Multiple sale-related words in the registered domain.
-
     const baitCount = shoppingBaitWords.filter(word =>
         registeredLabel.includes(word)
     ).length;
@@ -369,10 +366,15 @@ function analyseShoppingUrl(parsedUrl) {
     }
 
     // Urgency and flash-sale wording in the URL path/query.
+    let decodedPathAndQuery = parsedUrl.pathname + parsedUrl.search;
 
-    const pathAndQuery = decodeURIComponent(
-        parsedUrl.pathname + parsedUrl.search
-    )
+    try {
+        decodedPathAndQuery = decodeURIComponent(decodedPathAndQuery);
+    } catch {
+        // Keep the encoded form when percent-encoding is malformed.
+    }
+
+    const pathAndQuery = decodedPathAndQuery
         .toLowerCase()
         .replace(/[_\s]+/g, "-");
 
@@ -388,7 +390,6 @@ function analyseShoppingUrl(parsedUrl) {
     }
 
     // Suspicious combinations of payment-related URL terms.
-
     const paymentMatches = paymentWords.filter(word =>
         pathAndQuery.includes(word)
     );
@@ -409,7 +410,6 @@ function analyseShoppingUrl(parsedUrl) {
     }
 
     // Several discount signals together.
-
     const discountMatches = [
         /(?:\b|[-_])\d{2,3}[-_]?percent(?:\b|[-_])/i,
         /(?:\b|[-_])\d{2,3}off(?:\b|[-_])/i,
@@ -433,9 +433,8 @@ function analyseShoppingUrl(parsedUrl) {
     };
 }
 
-// URLhaus checks for URLs associated with malware distribution.
+// URLhaus checks URLs associated with malware distribution.
 // ScamLens does not open the submitted website.
-
 async function checkUrlhaus(url) {
     const authKey = process.env.URLHAUS_AUTH_KEY;
 
@@ -517,7 +516,6 @@ async function checkUrlhaus(url) {
 
 // VirusTotal checks an existing URL report only.
 // ScamLens does not submit new URLs for analysis.
-
 async function checkVirusTotal(url) {
     const apiKey = process.env.VIRUSTOTAL_API_KEY;
 
@@ -666,7 +664,6 @@ app.post("/api/scan", async (req, res) => {
     }
 
     // Run local checks and reputation checks.
-
     const urlAnalysis = analyseUrl(parsedUrl);
     const shoppingAnalysis = analyseShoppingUrl(parsedUrl);
 
@@ -681,7 +678,6 @@ app.post("/api/scan", async (req, res) => {
     ];
 
     // Local signals have a maximum contribution of 60 points.
-
     const localScore = Math.min(
         urlAnalysis.score + shoppingAnalysis.score,
         60
@@ -690,7 +686,6 @@ app.post("/api/scan", async (req, res) => {
     let reputationScore = 0;
 
     // URLhaus: a known malware-related listing is a strong signal.
-
     if (reputation.status === "listed") {
         reputationScore = Math.max(reputationScore, 60);
 
@@ -713,8 +708,7 @@ app.post("/api/scan", async (req, res) => {
         });
     }
 
-    // VirusTotal: detection counts provide evidence, not a probability.
-
+    // VirusTotal detections provide evidence, not a probability.
     if (virusTotal.status === "malicious") {
         const maliciousCount = Number(virusTotal.malicious) || 0;
 
@@ -754,7 +748,6 @@ app.post("/api/scan", async (req, res) => {
     }
 
     // Combine local and reputation evidence.
-
     const score = Math.min(
         localScore + reputationScore,
         100
@@ -768,11 +761,34 @@ app.post("/api/scan", async (req, res) => {
                 ? "Use Caution"
                 : "Fewer Warning Signals";
 
+    const recommendations = (
+        reputation.status === "listed" ||
+        virusTotal.status === "malicious"
+    )
+        ? [
+            "Do not open this link or enter credentials or payment details.",
+            "Verify the seller or sender using an independently obtained official contact method."
+        ]
+        : virusTotal.status === "suspicious" || score >= 40
+            ? [
+                "Pause and verify the exact registered domain independently.",
+                "Do not enter passwords, OTPs, UPI PINs, or payment details until verified."
+            ]
+            : score >= 20
+                ? [
+                    "Review the warning signals and verify the website through an official source before buying."
+                ]
+                : [
+                    "No major warning signals were identified by the checks available for this scan.",
+                    "This is not proof of safety; verify the seller and payment method before buying."
+                ];
+
     return res.json({
         status: "success",
         url: parsedUrl.href,
         score,
         riskLabel,
+        recommendations,
         findings: findings.map(finding => finding.message),
         findingDetails: findings,
 
@@ -793,7 +809,6 @@ app.post("/api/scan", async (req, res) => {
 });
 
 // Handle invalid JSON and unexpected server errors.
-
 app.use((err, req, res, next) => {
     if (err instanceof SyntaxError && "body" in err) {
         return res.status(400).json({

@@ -24,13 +24,13 @@
 
 <style>
 
-/* ScamLens sign-in overlay: self-contained so it works even if style.css is older */
+/\* ScamLens sign-in overlay: self-contained so it works even if style.css is older \*/
 
 .auth-overlay {
 
   position: fixed; inset: 0; z-index: 10000; display: grid; place-items: center;
 
-  padding: 14px; overflow-y: auto; background: rgba(18, 24, 38, .74);
+  padding: 22px; overflow-y: auto; background: rgba(18, 24, 38, .74);
 
   backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
 
@@ -40,9 +40,9 @@
 
 .auth-panel {
 
-  box-sizing: border-box; width: min(100%, 420px); max-height: calc(100vh - 28px);
+  box-sizing: border-box; width: min(100%, 440px); max-height: calc(100vh - 36px);
 
-  overflow-y: auto; padding: 24px 28px 22px; border: 1px solid #e9edf5;
+  overflow-y: auto; padding: clamp(24px, 5vw, 38px); border: 1px solid #e9edf5;
 
   border-radius: 22px; background: #fff; color: #202632;
 
@@ -50,19 +50,19 @@
 
 }
 
-.auth-brand { display:flex; align-items:center; gap:10px; margin-bottom:16px; font-size:22px; font-weight:800; letter-spacing:-.6px; }
+.auth-brand { display:flex; align-items:center; gap:10px; margin-bottom:20px; font-size:23px; font-weight:800; letter-spacing:-.6px; }
 
 .auth-brand .brand-icon { display:grid; place-items:center; width:42px; height:42px; border-radius:13px; background:#fff0f4; color:#ff3f6c; }
 
-.auth-panel h2 { margin:0 0 8px; color:#202632; font-size:27px; line-height:1.2; letter-spacing:-.7px; }
+.auth-panel h2 { margin:0 0 8px; color:#202632; font-size:28px; line-height:1.2; letter-spacing:-.7px; }
 
-.auth-subtitle { margin:0 0 17px; color:#687385; font-size:13px; line-height:1.6; }
+.auth-subtitle { margin:0 0 24px; color:#687385; font-size:13px; line-height:1.6; }
 
-.auth-form { display:grid; gap:10px; }
+.auth-form { display:grid; gap:13px; }
 
-.auth-field { display:grid; gap:5px; color:#3e485a; font-size:12px; font-weight:700; }
+.auth-field { display:grid; gap:7px; color:#3e485a; font-size:12px; font-weight:700; }
 
-.auth-field input { box-sizing:border-box; display:block; width:100%; min-height:44px; padding:10px 12px; border:1px solid #dfe4ed; border-radius:10px; outline:none; background:#fbfcfe; color:#202632; font:inherit; font-size:14px; }
+.auth-field input { box-sizing:border-box; display:block; width:100%; min-height:48px; padding:12px 14px; border:1px solid #dfe4ed; border-radius:10px; outline:none; background:#fbfcfe; color:#202632; font:inherit; font-size:14px; }
 
 .auth-field input:focus { border-color:#ff3f6c; box-shadow:0 0 0 3px rgba(255,63,108,.12); }
 
@@ -70,15 +70,15 @@
 
 .auth-message { min-height:18px; margin:0; color:#b42336; font-size:12px; line-height:1.5; overflow-wrap:anywhere; }
 
-.auth-submit { display:block; width:100%; min-height:45px; border:0; border-radius:10px; background:#ff3f6c; color:#fff; font-size:14px; font-weight:800; cursor:pointer; }
+.auth-submit { display:block; width:100%; min-height:49px; border:0; border-radius:10px; background:#ff3f6c; color:#fff; font-size:14px; font-weight:800; cursor:pointer; }
 
 .auth-submit:hover { background:#e93360; }
 
 .auth-submit:disabled { opacity:.65; cursor:wait; }
 
-.auth-switch { display:block; width:100%; margin-top:10px; padding:6px 0; border:0; background:transparent; color:#d92d59; font-size:12px; font-weight:750; cursor:pointer; }
+.auth-switch { display:block; width:100%; margin-top:17px; padding:8px 0; border:0; background:transparent; color:#d92d59; font-size:12px; font-weight:750; cursor:pointer; }
 
-.auth-privacy { margin:9px 0 0; color:#8a93a2; font-size:10px; text-align:center; line-height:1.6; }
+.auth-privacy { margin:14px 0 0; color:#8a93a2; font-size:10px; text-align:center; line-height:1.6; }
 
 body.auth-locked { overflow:hidden; }
 
@@ -89,200 +89,6 @@ body.auth-locked { overflow:hidden; }
   .auth-panel { max-height:calc(100vh - 28px); padding:24px 20px; border-radius:18px; }
 
   .auth-panel h2 { font-size:25px; }
-
-}
-
-/* Compact auth layout overrides to neutralize legacy/global styles */
-
-.auth-overlay {
-
-  display: flex !important;
-
-  align-items: center !important;
-
-  justify-content: center !important;
-
-  padding: 14px !important;
-
-  overflow-y: auto !important;
-
-}
-
-.auth-panel,
-
-.auth-panel * {
-
-  box-sizing: border-box !important;
-
-}
-
-.auth-panel {
-
-  width: min(100%, 420px) !important;
-
-  max-height: calc(100dvh - 28px) !important;
-
-  height: auto !important;
-
-  padding: 24px 28px 22px !important;
-
-  margin: auto !important;
-
-  overflow-y: auto !important;
-
-  display: block !important;
-
-}
-
-.auth-panel .auth-brand {
-
-  display: flex !important;
-
-  margin: 0 0 17px !important;
-
-  line-height: 1.2 !important;
-
-}
-
-.auth-panel h2 {
-
-  margin: 0 0 8px !important;
-
-  line-height: 1.2 !important;
-
-}
-
-.auth-panel .auth-subtitle {
-
-  margin: 0 0 17px !important;
-
-}
-
-.auth-panel .auth-form {
-
-  display: flex !important;
-
-  flex-direction: column !important;
-
-  gap: 10px !important;
-
-  margin: 0 !important;
-
-  padding: 0 !important;
-
-}
-
-.auth-panel .auth-field {
-
-  display: flex !important;
-
-  flex-direction: column !important;
-
-  gap: 5px !important;
-
-  width: 100% !important;
-
-  margin: 0 !important;
-
-  padding: 0 !important;
-
-  line-height: 1.35 !important;
-
-}
-
-.auth-panel .auth-field input {
-
-  width: 100% !important;
-
-  min-height: 44px !important;
-
-  height: 44px !important;
-
-  margin: 0 !important;
-
-  padding: 0 14px !important;
-
-  line-height: normal !important;
-
-}
-
-.auth-panel .auth-forgot {
-
-  align-self: flex-end !important;
-
-  justify-self: auto !important;
-
-  margin: -2px 0 0 !important;
-
-  padding: 4px 0 !important;
-
-  line-height: 1.4 !important;
-
-}
-
-.auth-panel .auth-message {
-
-  min-height: 0 !important;
-
-  margin: 0 !important;
-
-  padding: 0 !important;
-
-}
-
-.auth-panel .auth-message:empty {
-
-  display: none !important;
-
-}
-
-.auth-panel .auth-submit {
-
-  width: 100% !important;
-
-  min-height: 44px !important;
-
-  height: 44px !important;
-
-  margin: 0 !important;
-
-  padding: 0 16px !important;
-
-  line-height: 1 !important;
-
-}
-
-.auth-panel .auth-switch {
-
-  margin: 12px 0 0 !important;
-
-  padding: 8px 0 !important;
-
-  line-height: 1.4 !important;
-
-}
-
-.auth-panel .auth-privacy {
-
-  margin: 10px 0 0 !important;
-
-  line-height: 1.5 !important;
-
-}
-
-@media (max-width: 600px) {
-
-  .auth-overlay { padding: 12px !important; }
-
-  .auth-panel {
-
-    width: 100% !important;
-
-    max-height: calc(100dvh - 24px) !important;
-
-    padding: 22px 20px 18px !important;
-
-  }
 
 }
 
@@ -516,7 +322,7 @@ aria-label="Shopping website URL"
 
 required
 
-\>
+>
 
 </div>
 
@@ -932,9 +738,9 @@ function renderScanHistory() {
 
         const score = Number(entry.score) || 0;
 
-        const colour = score >= 50 ? "#c62845" : score >= 25 ? "#a66b00" : "#16834a";
+        const colour = score >= 70 ? "#b42336" : score >= 40 ? "#a66b00" : score >= 20 ? "#946200" : "#16834a";
 
-        const tint = score >= 50 ? "#fff0f2" : score >= 25 ? "#fff6df" : "#eaf8ef";
+        const tint = score >= 70 ? "#fff0f2" : score >= 40 ? "#fff6df" : score >= 20 ? "#fff8e8" : "#eaf8ef";
 
         const card = document.createElement("article");
 
@@ -1074,25 +880,31 @@ function showResults(result) {
 
     const level = result.riskLabel || "Assessment unavailable";
 
-    let colour = "#16834a";
+        let colour = "#16834a";
 
     let background = "#eaf8ef";
 
-    if (score >= 50) {
+    if (score >= 70) {
 
-        colour = "#c62845";
+        colour = "#b42336";
 
         background = "#fff0f2";
 
-    } else if (score >= 25) {
+    } else if (score >= 40) {
 
         colour = "#a66b00";
 
         background = "#fff6df";
 
+    } else if (score >= 20) {
+
+        colour = "#946200";
+
+        background = "#fff8e8";
+
     }
 
-    function createCard(title, subtitle) {
+function createCard(title, subtitle) {
 
         const card = document.createElement("article");
 
@@ -1186,6 +998,90 @@ function showResults(result) {
 
     panel.appendChild(scoreRow);
 
+    const meterWrap = document.createElement("div");
+
+    meterWrap.className = "scan-risk-meter-wrap";
+
+    const meterMeta = document.createElement("div");
+
+    meterMeta.className = "scan-risk-meter-meta";
+
+    const meterTitle = document.createElement("span");
+
+    meterTitle.textContent = "Risk signal level";
+
+    const meterScale = document.createElement("span");
+
+    meterScale.textContent = "0 low · 100 high";
+
+    meterMeta.append(meterTitle, meterScale);
+
+    const meterTrack = document.createElement("div");
+
+    meterTrack.className = "scan-risk-meter-track";
+
+    meterTrack.setAttribute("role", "meter");
+
+    meterTrack.setAttribute("aria-label", "Preliminary risk score");
+
+    meterTrack.setAttribute("aria-valuemin", "0");
+
+    meterTrack.setAttribute("aria-valuemax", "100");
+
+    meterTrack.setAttribute("aria-valuenow", String(Math.max(0, Math.min(100, score))));
+
+    const meterFill = document.createElement("div");
+
+    meterFill.className = "scan-risk-meter-fill";
+
+    meterFill.style.width = `${Math.max(0, Math.min(100, score))}%`;
+
+    meterFill.style.background = colour;
+
+    meterTrack.appendChild(meterFill);
+
+    meterWrap.append(meterMeta, meterTrack);
+
+    panel.appendChild(meterWrap);
+
+    const interpretation = document.createElement("div");
+
+    interpretation.className = "scan-interpretation";
+
+    const interpretationTitle = document.createElement("strong");
+
+    const interpretationText = document.createElement("p");
+
+    if (score >= 70) {
+
+        interpretationTitle.textContent = "High-risk indicators detected";
+
+        interpretationText.textContent = "Avoid entering passwords, payment details, or personal information. If you already did, contact your bank or change affected passwords using the official site.";
+
+    } else if (score >= 40) {
+
+        interpretationTitle.textContent = "Several warning signals need attention";
+
+        interpretationText.textContent = "Pause before proceeding. Verify the exact domain through an independent, trusted source and avoid payment methods that offer no buyer protection.";
+
+    } else if (score >= 20) {
+
+        interpretationTitle.textContent = "Some warning signals were found";
+
+        interpretationText.textContent = "Check the findings below and verify the seller independently before sharing information or making a purchase.";
+
+    } else {
+
+        interpretationTitle.textContent = "Few warning signals were found by these checks";
+
+        interpretationText.textContent = "This is not a safety certification. New or unreported scams can be missed, so confirm the seller and payment method before buying.";
+
+    }
+
+    interpretation.append(interpretationTitle, interpretationText);
+
+    panel.appendChild(interpretation);
+
     const urlText = document.createElement("p");
 
     urlText.textContent = `URL checked: ${result.url || shoppingUrl.value.trim()}`;
@@ -1237,8 +1133,137 @@ function showResults(result) {
     panel.appendChild(findingsList);
 
     scanResults.appendChild(panel);
+    // Build recommendations from the actual findings first, then add useful backend advice.
+    const recommendationsCard = createCard(
+        "What you should do next",
+        "Specific next steps based on the signals and reputation checks returned by this scan."
+    );
+    recommendationsCard.classList.add("scan-recommendations-card");
 
-    // Card 2: Shopping-specific analysis
+    const recommendationFindings = Array.isArray(result.findings) ? result.findings : [];
+    const recommendationShopping = result.shoppingAnalysis || {};
+    const shoppingSignals = Array.isArray(recommendationShopping.signals) ? recommendationShopping.signals : [];
+    const recommendationReputation = result.reputation || {};
+    const recommendationVirusTotal = result.virusTotal || {};
+    const findingText = recommendationFindings.map(item => typeof item === "string" ? item : (item && item.message) || "").join(" ").toLowerCase();
+    const shoppingText = shoppingSignals.map(item => (item && item.message) || "").join(" ").toLowerCase();
+    const allSignals = `${findingText} ${shoppingText}`;
+    const tailoredRecommendations = [];
+    const addRecommendation = message => {
+        if (message && !tailoredRecommendations.includes(message)) tailoredRecommendations.push(message);
+    };
+
+    if (/contains the brand|brand.{0,30}(mismatch|impersonat|registered domain)|registered domain/.test(allSignals)) {
+        let officialSuggestion = "Open the brand's official website by typing its known address yourself; do not trust a brand name merely appearing in a subdomain or URL.";
+        try {
+            const checkedHost = new URL(result.url || shoppingUrl.value.trim()).hostname.toLowerCase();
+            const brandDomains = [
+                { brand: "amazon", domain: "amazon.in" }, { brand: "flipkart", domain: "flipkart.com" },
+                { brand: "myntra", domain: "myntra.com" }, { brand: "ajio", domain: "ajio.com" },
+                { brand: "meesho", domain: "meesho.com" }, { brand: "nike", domain: "nike.com" },
+                { brand: "adidas", domain: "adidas.co.in" }, { brand: "puma", domain: "in.puma.com" },
+                { brand: "apple", domain: "apple.com" }, { brand: "samsung", domain: "samsung.com" }
+            ];
+            const match = brandDomains.find(item => checkedHost.includes(item.brand) && checkedHost !== item.domain && !checkedHost.endsWith(`.${item.domain}`));
+            if (match) officialSuggestion = `The URL mentions ${match.brand}, but that alone does not prove it belongs to the brand. Type ${match.domain} into your browser or use the brand's official app instead.`;
+        } catch (_) {}
+        addRecommendation(officialSuggestion);
+    }
+    if (/hyphen|unusual url|many subdomains|ip address|punycode|embedded credentials|shortener|nonstandard port|http instead of https|not using https|plain http/.test(allSignals)) {
+        addRecommendation("Inspect the exact hostname and address bar carefully. Unusual URL structure is a warning signal, not proof of fraud by itself.");
+    }
+    if (/urgent|flash sale|limited time|act now|pressure|discount|free gift|too good|bait|unbelievable/.test(allSignals)) {
+        addRecommendation("Treat urgent-sale language, free gifts, and unusually large discounts cautiously. Compare the offer on the seller's official store before paying.");
+    }
+    if (/upi|payment|bank transfer|gift card|verify-account|checkout/.test(allSignals)) {
+        addRecommendation("Never share a UPI PIN or OTP to receive money or verify an offer. Avoid payment links sent through unsolicited messages.");
+    }
+    if (Number(score) >= 70) {
+        addRecommendation("Do not sign in, download files, or enter payment details on this page. If you already paid, contact your bank through its official app or number.");
+    } else if (Number(score) >= 40) {
+        addRecommendation("Pause before proceeding. Verify the seller through an independent source and check its contact details, returns policy, and independent reviews.");
+    } else if (Number(score) >= 20) {
+        addRecommendation("Review each warning signal and confirm the seller independently before sharing personal information or making a purchase.");
+    }
+    if (["unavailable", "not_configured"].includes(String(recommendationReputation.status || ""))) {
+        addRecommendation("URLhaus could not complete a reputation check. Treat this as unknown information—not as a clean result.");
+    } else if (recommendationReputation.status === "not_listed") {
+        addRecommendation("URLhaus found no listing for this URL, but newly created or unreported threats may be absent from the database.");
+    } else if (recommendationReputation.status === "listed") {
+        addRecommendation("URLhaus lists this URL as a threat. Avoid opening it and do not enter credentials or payment details.");
+    }
+    if (["no_report", "not_configured", "unavailable"].includes(String(recommendationVirusTotal.status || ""))) {
+        addRecommendation("VirusTotal did not return a usable existing report. A missing report is not evidence that the site is safe.");
+    } else if (recommendationVirusTotal.status === "malicious" || Number(recommendationVirusTotal.malicious) > 0) {
+        addRecommendation("VirusTotal reports malicious detections. Avoid this URL and use a trusted device/security tool if you already opened or downloaded something from it.");
+    } else if (recommendationVirusTotal.status === "suspicious" || Number(recommendationVirusTotal.suspicious) > 0) {
+        addRecommendation("VirusTotal reports suspicious detections. Do not proceed unless you can independently establish that the destination is legitimate.");
+    } else if (recommendationVirusTotal.status === "analyzed") {
+        addRecommendation("VirusTotal has an existing report, but even zero detections cannot guarantee safety. Check the report date and verify the seller independently.");
+    }
+
+    const backendRecommendations = Array.isArray(result.recommendations) ? result.recommendations : [];
+    backendRecommendations.forEach(recommendation => {
+        const message = typeof recommendation === "string"
+            ? recommendation
+            : (recommendation && (recommendation.message || recommendation.text || recommendation.recommendation)) || "";
+        if (!message) return;
+        const normalized = message.toLowerCase();
+        const generic = /review the warning signals above|confirm the seller and the domain independently|use a payment method with buyer protection|check the findings below/.test(normalized);
+        if (!generic && !tailoredRecommendations.some(existing => existing.toLowerCase() === normalized)) addRecommendation(message);
+    });
+
+    if (tailoredRecommendations.length === 0) {
+        addRecommendation("No major warning signals were returned by these checks, but that does not prove the website is safe.");
+        addRecommendation("Confirm the exact domain and seller independently before paying.");
+        addRecommendation("Use a payment method with buyer protection where available.");
+    }
+
+    const recommendationList = document.createElement("ul");
+    recommendationList.style.cssText = "padding-left:20px;margin:0;font-size:13px;line-height:1.9;color:#364152;";
+    tailoredRecommendations.forEach(recommendation => {
+        const item = document.createElement("li");
+        item.textContent = recommendation;
+        recommendationList.appendChild(item);
+    });
+    recommendationsCard.appendChild(recommendationList);
+
+    const reportButton = document.createElement("button");
+    reportButton.type = "button";
+    reportButton.className = "nav-button";
+    reportButton.style.cssText = "margin-top:18px;cursor:pointer;";
+    reportButton.textContent = "Download scan report (.txt)";
+    reportButton.addEventListener("click", () => {
+        const reportLines = [
+            "ScamLens Scan Report",
+            `Scanned URL: ${result.url || shoppingUrl.value.trim()}`,
+            `Date: ${new Date().toLocaleString()}`,
+            `Preliminary risk score: ${score}/100`,
+            `Risk label: ${level}`,
+            "",
+            "FINDINGS",
+            ...(recommendationFindings.length ? recommendationFindings.map(item => `- ${typeof item === "string" ? item : (item && item.message) || "Warning signal detected"}`) : ["- No warning signals were returned."]),
+            "",
+            "RECOMMENDED NEXT STEPS",
+            ...tailoredRecommendations.map(item => `- ${item}`),
+            "",
+            `URLhaus status: ${recommendationReputation.status || "unavailable"}`,
+            `VirusTotal status: ${recommendationVirusTotal.status || "unavailable"}`,
+            "",
+            String(result.disclaimer || "This is a preliminary risk assessment, not a guarantee of website safety.")
+        ];
+        const blob = new Blob([reportLines.join("\n")], { type: "text/plain;charset=utf-8" });
+        const objectUrl = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = objectUrl;
+        link.download = "scamlens-scan-report.txt";
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        URL.revokeObjectURL(objectUrl);
+    });
+    recommendationsCard.appendChild(reportButton);
+    scanResults.appendChild(recommendationsCard);// Card 2: Shopping-specific analysis
 
     const shopping = result.shoppingAnalysis || {};
 
@@ -1519,6 +1544,82 @@ function showResults(result) {
     scanResults.appendChild(virusTotalCard);
 
     // Final disclaimer
+
+    const coverageCard = createCard(
+
+        "Scan coverage",
+
+        "See which checks contributed to this assessment. An unavailable source is not treated as a clean result."
+
+    );
+
+    coverageCard.classList.add("scan-coverage-card");
+
+    const coverageGrid = document.createElement("div");
+
+    coverageGrid.className = "scan-coverage-grid";
+
+    const urlCheck = { label: "URL pattern checks", state: "Completed", detail: "Local URL structure and protocol indicators" };
+
+    const shoppingCheck = { label: "Shopping signals", state: "Completed", detail: "Domain and shopping-related patterns" };
+
+    const urlhausAvailable = ["listed", "not_listed"].includes(status);
+
+    const vtAvailable = ["malicious", "suspicious", "analyzed"].includes(vtStatus);
+
+    const checks = [
+
+        urlCheck,
+
+        shoppingCheck,
+
+        { label: "URLhaus reputation", state: urlhausAvailable ? (status === "listed" ? "Threat listed" : "No listing found") : "Unavailable", detail: "Malware URL reputation database" },
+
+        { label: "VirusTotal report", state: vtAvailable ? (vtStatus === "malicious" ? "Detections found" : vtStatus === "suspicious" ? "Suspicious detections" : "Existing report checked") : "Unavailable / no report", detail: "Existing multi-engine analysis" }
+
+    ];
+
+    checks.forEach(check => {
+
+        const item = document.createElement("div");
+
+        item.className = "scan-coverage-item";
+
+        const top = document.createElement("div");
+
+        top.className = "scan-coverage-top";
+
+        const name = document.createElement("strong");
+
+        name.textContent = check.label;
+
+        const state = document.createElement("span");
+
+        state.className = "scan-coverage-state";
+
+        state.textContent = check.state;
+
+        if (/unavailable|no report/i.test(check.state)) state.classList.add("is-unknown");
+
+        else if (/threat listed|detections found|suspicious/i.test(check.state)) state.classList.add("is-warning");
+
+        else state.classList.add("is-complete");
+
+        const detail = document.createElement("p");
+
+        detail.textContent = check.detail;
+
+        top.append(name, state);
+
+        item.append(top, detail);
+
+        coverageGrid.appendChild(item);
+
+    });
+
+    coverageCard.appendChild(coverageGrid);
+
+    scanResults.appendChild(coverageCard);
 
     const disclaimerCard = document.createElement("p");
 
