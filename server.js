@@ -9,7 +9,8 @@ const PORT = Number(process.env.PORT) || 3000;
 
 const allowedOrigins = new Set([
     "http://127.0.0.1:5500",
-    "http://localhost:5500"
+    "http://localhost:5500",
+    "https://anirudh-gupta0210.github.io"
 ]);
 
 app.use((req, res, next) => {
@@ -195,6 +196,7 @@ function analyseUrl(parsedUrl) {
 
 // Approximate registered-domain extraction.
 // This is not a complete Public Suffix List implementation.
+
 function getApproximateRegisteredDomain(hostname) {
     const labels = hostname
         .toLowerCase()
@@ -270,6 +272,7 @@ function analyseShoppingUrl(parsedUrl) {
     const registeredLabel = registeredDomain.split(".")[0];
     const labels = hostname.split(".");
     const signals = [];
+
     let score = 0;
 
     function addSignal(points, message) {
@@ -278,6 +281,7 @@ function analyseShoppingUrl(parsedUrl) {
     }
 
     // Brand impersonation and lookalike detection.
+
     for (const [brand, officialDomains] of Object.entries(
         shoppingBrandDomains
     )) {
@@ -352,6 +356,7 @@ function analyseShoppingUrl(parsedUrl) {
     }
 
     // Multiple sale-related words in the registered domain.
+
     const baitCount = shoppingBaitWords.filter(word =>
         registeredLabel.includes(word)
     ).length;
@@ -364,6 +369,7 @@ function analyseShoppingUrl(parsedUrl) {
     }
 
     // Urgency and flash-sale wording in the URL path/query.
+
     const pathAndQuery = decodeURIComponent(
         parsedUrl.pathname + parsedUrl.search
     )
@@ -382,6 +388,7 @@ function analyseShoppingUrl(parsedUrl) {
     }
 
     // Suspicious combinations of payment-related URL terms.
+
     const paymentMatches = paymentWords.filter(word =>
         pathAndQuery.includes(word)
     );
@@ -402,6 +409,7 @@ function analyseShoppingUrl(parsedUrl) {
     }
 
     // Several discount signals together.
+
     const discountMatches = [
         /(?:\b|[-_])\d{2,3}[-_]?percent(?:\b|[-_])/i,
         /(?:\b|[-_])\d{2,3}off(?:\b|[-_])/i,
@@ -424,8 +432,10 @@ function analyseShoppingUrl(parsedUrl) {
         signals
     };
 }
+
 // URLhaus checks for URLs associated with malware distribution.
 // ScamLens does not open the submitted website.
+
 async function checkUrlhaus(url) {
     const authKey = process.env.URLHAUS_AUTH_KEY;
 
@@ -505,9 +515,9 @@ async function checkUrlhaus(url) {
     }
 }
 
-
 // VirusTotal checks an existing URL report only.
 // ScamLens does not submit new URLs for analysis.
+
 async function checkVirusTotal(url) {
     const apiKey = process.env.VIRUSTOTAL_API_KEY;
 
@@ -656,6 +666,7 @@ app.post("/api/scan", async (req, res) => {
     }
 
     // Run local checks and reputation checks.
+
     const urlAnalysis = analyseUrl(parsedUrl);
     const shoppingAnalysis = analyseShoppingUrl(parsedUrl);
 
@@ -670,6 +681,7 @@ app.post("/api/scan", async (req, res) => {
     ];
 
     // Local signals have a maximum contribution of 60 points.
+
     const localScore = Math.min(
         urlAnalysis.score + shoppingAnalysis.score,
         60
@@ -678,6 +690,7 @@ app.post("/api/scan", async (req, res) => {
     let reputationScore = 0;
 
     // URLhaus: a known malware-related listing is a strong signal.
+
     if (reputation.status === "listed") {
         reputationScore = Math.max(reputationScore, 60);
 
@@ -701,6 +714,7 @@ app.post("/api/scan", async (req, res) => {
     }
 
     // VirusTotal: detection counts provide evidence, not a probability.
+
     if (virusTotal.status === "malicious") {
         const maliciousCount = Number(virusTotal.malicious) || 0;
 
@@ -740,6 +754,7 @@ app.post("/api/scan", async (req, res) => {
     }
 
     // Combine local and reputation evidence.
+
     const score = Math.min(
         localScore + reputationScore,
         100
@@ -778,6 +793,7 @@ app.post("/api/scan", async (req, res) => {
 });
 
 // Handle invalid JSON and unexpected server errors.
+
 app.use((err, req, res, next) => {
     if (err instanceof SyntaxError && "body" in err) {
         return res.status(400).json({
