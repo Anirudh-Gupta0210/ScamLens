@@ -1,6 +1,8 @@
 const express = require("express");
 const dotenv = require("dotenv");
 const net = require("node:net");
+const dns = require("node:dns").promises;
+const path = require("node:path");
 
 dotenv.config();
 
@@ -9,8 +11,7 @@ const PORT = Number(process.env.PORT) || 3000;
 
 const allowedOrigins = new Set([
     "http://127.0.0.1:5500",
-    "http://localhost:5500",
-    "https://anirudh-gupta0210.github.io"
+    "http://localhost:5500"
 ]);
 
 app.use((req, res, next) => {
@@ -33,6 +34,18 @@ app.use((req, res, next) => {
 
 app.use(express.json({ limit: "10kb" }));
 
+app.get("/", (req, res) => {
+    res.sendFile(path.join(__dirname, "index.html"));
+});
+
+app.get("/style.css", (req, res) => {
+    res.sendFile(path.join(__dirname, "style.css"));
+});
+
+app.get("/firebase.js", (req, res) => {
+    res.sendFile(path.join(__dirname, "firebase.js"));
+});
+
 app.get("/api/health", (req, res) => {
     res.json({
         status: "success",
@@ -41,18 +54,9 @@ app.get("/api/health", (req, res) => {
 });
 
 const knownShorteners = new Set([
-    "bit.ly",
-    "tinyurl.com",
-    "t.co",
-    "is.gd",
-    "shorturl.at",
-    "ow.ly",
-    "buff.ly",
-    "rb.gy",
-    "cutt.ly",
-    "lnkd.in",
-    "rebrand.ly",
-    "soo.gd"
+    "bit.ly", "tinyurl.com", "t.co", "is.gd",
+    "shorturl.at", "ow.ly", "buff.ly", "rb.gy",
+    "cutt.ly", "lnkd.in", "rebrand.ly", "soo.gd"
 ]);
 
 const shoppingBrandDomains = {
@@ -97,7 +101,6 @@ function getRiskLabel(score) {
 function analyseUrl(parsedUrl) {
     let score = 0;
     const findings = [];
-
     const hostname = parsedUrl.hostname.toLowerCase();
     const fullUrl = parsedUrl.href;
 
@@ -171,10 +174,7 @@ function analyseUrl(parsedUrl) {
     }
 
     if (parsedUrl.port && !["80", "443"].includes(parsedUrl.port)) {
-        addFinding(
-            10,
-            "The URL uses a non-standard web port."
-        );
+        addFinding(10, "The URL uses a non-standard web port.");
     }
 
     score = Math.min(score, 100);
@@ -249,29 +249,21 @@ function editDistance(a, b) {
 
 function normalizeLookalikeLabel(label) {
     const substitutions = {
-        "0": "o",
-        "1": "i",
-        "3": "e",
-        "4": "a",
-        "5": "s",
-        "7": "t"
+        "0": "o", "1": "i", "3": "e",
+        "4": "a", "5": "s", "7": "t"
     };
 
-    return label.replace(/[013457]/g, digit => substitutions[digit]);
+    return label.replace(
+        /[013457]/g,
+        digit => substitutions[digit]
+    );
 }
-
 function analyseShoppingUrl(parsedUrl) {
-    const hostname = parsedUrl.hostname
-        .toLowerCase()
-        .replace(/\.$/, "");
-
-    const registeredDomain =
-        getApproximateRegisteredDomain(hostname);
-
+    const hostname = parsedUrl.hostname.toLowerCase().replace(/\.$/, "");
+    const registeredDomain = getApproximateRegisteredDomain(hostname);
     const registeredLabel = registeredDomain.split(".")[0];
     const labels = hostname.split(".");
     const signals = [];
-
     let score = 0;
 
     function addSignal(points, message) {
@@ -279,43 +271,23 @@ function analyseShoppingUrl(parsedUrl) {
         signals.push({ points, message });
     }
 
-    // Brand impersonation and lookalike detection.
-    for (const [brand, officialDomains] of Object.entries(
-        shoppingBrandDomains
-    )) {
+    for (const [brand, officialDomains] of Object.entries(shoppingBrandDomains)) {
         const isOfficialDomain = officialDomains.some(domain =>
             hostname === domain || hostname.endsWith("." + domain)
         );
 
-        if (isOfficialDomain) {
-            continue;
-        }
+        if (isOfficialDomain) continue;
 
         const matchingLabel = labels.find(label => {
             const normalized = normalizeLookalikeLabel(label);
-
-            return (
-                normalized === brand ||
-                normalized.includes(brand)
-            );
+            return normalized === brand || normalized.includes(brand);
         });
 
         if (matchingLabel) {
-            const normalized =
-                normalizeLookalikeLabel(matchingLabel);
-
-            if (normalized === brand) {
-                addSignal(
-                    25,
-                    `The hostname label "${matchingLabel}" resembles the brand "${brand}", but the registered domain is "${registeredDomain}". Verify the official website.`
-                );
-            } else {
-                addSignal(
-                    20,
-                    `The hostname label "${matchingLabel}" contains the brand "${brand}", but the registered domain is "${registeredDomain}". Verify the seller independently.`
-                );
-            }
-
+            addSignal(
+                25,
+                `The hostname label "${matchingLabel}" resembles the brand "${brand}", but the registered domain is "${registeredDomain}". Verify the official website.`
+            );
             break;
         }
 
@@ -324,11 +296,8 @@ function analyseShoppingUrl(parsedUrl) {
 
             const normalized = normalizeLookalikeLabel(label);
 
-            return (
-                normalized !== brand &&
-                editDistance(normalized, brand) <=
-                    (brand.length >= 8 ? 2 : 1)
-            );
+            return normalized !== brand &&
+                editDistance(normalized, brand) <= (brand.length >= 8 ? 2 : 1);
         });
 
         if (closeMatch) {
@@ -336,24 +305,18 @@ function analyseShoppingUrl(parsedUrl) {
                 20,
                 `A hostname label resembles the brand "${brand}". Check the exact registered domain before trusting the link.`
             );
-
             break;
         }
 
-        if (
-            registeredLabel.includes(brand) &&
-            registeredLabel !== brand
-        ) {
+        if (registeredLabel.includes(brand) && registeredLabel !== brand) {
             addSignal(
                 15,
                 `The registered domain "${registeredDomain}" includes "${brand}" in a longer label. This does not establish brand ownership.`
             );
-
             break;
         }
     }
 
-    // Multiple sale-related words in the registered domain.
     const baitCount = shoppingBaitWords.filter(word =>
         registeredLabel.includes(word)
     ).length;
@@ -365,13 +328,12 @@ function analyseShoppingUrl(parsedUrl) {
         );
     }
 
-    // Urgency and flash-sale wording in the URL path/query.
     let decodedPathAndQuery = parsedUrl.pathname + parsedUrl.search;
 
     try {
         decodedPathAndQuery = decodeURIComponent(decodedPathAndQuery);
     } catch {
-        // Keep the encoded form when percent-encoding is malformed.
+        // Keep the encoded form if decoding fails.
     }
 
     const pathAndQuery = decodedPathAndQuery
@@ -389,27 +351,24 @@ function analyseShoppingUrl(parsedUrl) {
         );
     }
 
-    // Suspicious combinations of payment-related URL terms.
     const paymentMatches = paymentWords.filter(word =>
         pathAndQuery.includes(word)
     );
 
-    const hasSensitivePaymentCombination =
+    if (
         paymentMatches.includes("upi") &&
         (
             paymentMatches.includes("verify-account") ||
             paymentMatches.includes("verifyaccount") ||
             paymentMatches.includes("refund")
-        );
-
-    if (hasSensitivePaymentCombination) {
+        )
+    ) {
         addSignal(
             10,
             "The URL combines payment-related wording with account verification or refund wording. Do not share a UPI PIN or OTP."
         );
     }
 
-    // Several discount signals together.
     const discountMatches = [
         /(?:\b|[-_])\d{2,3}[-_]?percent(?:\b|[-_])/i,
         /(?:\b|[-_])\d{2,3}off(?:\b|[-_])/i,
@@ -433,8 +392,6 @@ function analyseShoppingUrl(parsedUrl) {
     };
 }
 
-// URLhaus checks URLs associated with malware distribution.
-// ScamLens does not open the submitted website.
 async function checkUrlhaus(url) {
     const authKey = process.env.URLHAUS_AUTH_KEY;
 
@@ -442,7 +399,7 @@ async function checkUrlhaus(url) {
         return {
             status: "not_configured",
             provider: "URLhaus",
-            message: "URLhaus is not configured. Local URL checks still ran."
+            message: "URLhaus is not configured."
         };
     }
 
@@ -461,8 +418,6 @@ async function checkUrlhaus(url) {
         );
 
         if (!response.ok) {
-            console.error("URLhaus returned HTTP status:", response.status);
-
             return {
                 status: "unavailable",
                 provider: "URLhaus",
@@ -500,22 +455,16 @@ async function checkUrlhaus(url) {
             message: "URLhaus returned an unexpected response."
         };
     } catch (error) {
-        console.error(
-            "URLhaus check failed:",
-            error.name || error.message
-        );
+        console.error("URLhaus check failed:", error.message);
 
         return {
             status: "unavailable",
             provider: "URLhaus",
-            message:
-                "URLhaus could not be reached. The local URL checks still ran."
+            message: "URLhaus could not be reached."
         };
     }
 }
 
-// VirusTotal checks an existing URL report only.
-// ScamLens does not submit new URLs for analysis.
 async function checkVirusTotal(url) {
     const apiKey = process.env.VIRUSTOTAL_API_KEY;
 
@@ -534,9 +483,7 @@ async function checkVirusTotal(url) {
             `https://www.virustotal.com/api/v3/urls/${urlId}`,
             {
                 method: "GET",
-                headers: {
-                    "x-apikey": apiKey.trim()
-                },
+                headers: { "x-apikey": apiKey.trim() },
                 signal: AbortSignal.timeout(8000)
             }
         );
@@ -558,16 +505,10 @@ async function checkVirusTotal(url) {
         }
 
         if (!response.ok) {
-            console.error(
-                "VirusTotal returned HTTP status:",
-                response.status
-            );
-
             return {
                 status: "unavailable",
                 provider: "VirusTotal",
-                message:
-                    "VirusTotal could not complete the reputation check."
+                message: "VirusTotal could not complete the reputation check."
             };
         }
 
@@ -579,8 +520,7 @@ async function checkVirusTotal(url) {
             return {
                 status: "no_report",
                 provider: "VirusTotal",
-                message:
-                    "VirusTotal has no usable existing analysis for this URL."
+                message: "VirusTotal has no usable existing analysis for this URL."
             };
         }
 
@@ -588,33 +528,27 @@ async function checkVirusTotal(url) {
         const suspicious = Number(stats.suspicious) || 0;
 
         return {
-            status:
-                malicious > 0
-                    ? "malicious"
-                    : suspicious > 0
-                        ? "suspicious"
-                        : "analyzed",
+            status: malicious > 0
+                ? "malicious"
+                : suspicious > 0
+                    ? "suspicious"
+                    : "analyzed",
             provider: "VirusTotal",
             malicious,
             suspicious,
             harmless: Number(stats.harmless) || 0,
             undetected: Number(stats.undetected) || 0,
             lastAnalysisDate: attributes.last_analysis_date
-                ? new Date(
-                    attributes.last_analysis_date * 1000
-                ).toISOString()
+                ? new Date(attributes.last_analysis_date * 1000).toISOString()
                 : null,
             message: malicious > 0
                 ? `VirusTotal reports ${malicious} malicious engine detection(s) for this URL.`
                 : suspicious > 0
-                    ? `VirusTotal reports ${suspicious} suspicious engine detection(s) for this URL.`
+                    ? `VirusTotal reports ${suspicious} suspicious detection(s) for this URL.`
                     : "VirusTotal reported no malicious or suspicious detections in its last analysis. This does not guarantee safety."
         };
     } catch (error) {
-        console.error(
-            "VirusTotal check failed:",
-            error.name || "Unknown error"
-        );
+        console.error("VirusTotal check failed:", error.message);
 
         return {
             status: "unavailable",
@@ -623,7 +557,306 @@ async function checkVirusTotal(url) {
         };
     }
 }
+function isPublicIp(address) {
+    const family = net.isIP(address);
 
+    if (family === 4) {
+        const [a, b] = address.split(".").map(Number);
+
+        if (
+            a === 0 ||
+            a === 10 ||
+            a === 127 ||
+            (a === 100 && b >= 64 && b <= 127) ||
+            (a === 169 && b === 254) ||
+            (a === 172 && b >= 16 && b <= 31) ||
+            (a === 192 && b === 168) ||
+            (a === 192 && b === 0) ||
+            (a === 198 && (b === 18 || b === 19)) ||
+            a >= 224
+        ) {
+            return false;
+        }
+
+        return true;
+    }
+
+    if (family === 6) {
+        const normalized = address.toLowerCase();
+
+        if (
+            normalized === "::" ||
+            normalized === "::1" ||
+            normalized.startsWith("fc") ||
+            normalized.startsWith("fd") ||
+            normalized.startsWith("fe8") ||
+            normalized.startsWith("fe9") ||
+            normalized.startsWith("fea") ||
+            normalized.startsWith("feb") ||
+            normalized.startsWith("ff")
+        ) {
+            return false;
+        }
+
+        return true;
+    }
+
+    return false;
+}
+
+async function hostnameHasOnlyPublicAddresses(hostname) {
+    const cleanHost = hostname.toLowerCase().replace(/^\[|\]$/g, "");
+
+    if (
+        cleanHost === "localhost" ||
+        cleanHost.endsWith(".localhost") ||
+        cleanHost.endsWith(".local") ||
+        cleanHost.endsWith(".internal")
+    ) {
+        return false;
+    }
+
+    if (net.isIP(cleanHost)) {
+        return isPublicIp(cleanHost);
+    }
+
+    const records = await dns.lookup(cleanHost, {
+        all: true,
+        verbatim: true
+    });
+
+    return records.length > 0 &&
+        records.every(record => isPublicIp(record.address));
+}
+
+// Look up the registration event using RDAP.
+async function checkDomainAge(hostname) {
+    const registeredDomain = getApproximateRegisteredDomain(hostname);
+    const tld = registeredDomain.split(".").pop().toLowerCase();
+
+    let endpoints = [];
+
+    if (tld === "in") {
+        endpoints = [
+            `https://rdap.nixiregistry.in/rdap/domain/${encodeURIComponent(registeredDomain)}`,
+            `https://rdap.org/domain/${encodeURIComponent(registeredDomain)}`
+        ];
+    } else if (tld === "com") {
+        endpoints = [
+            `https://rdap.verisign.com/com/v1/domain/${encodeURIComponent(registeredDomain)}`,
+            `https://rdap.org/domain/${encodeURIComponent(registeredDomain)}`
+        ];
+    } else {
+        endpoints = [
+            `https://rdap.org/domain/${encodeURIComponent(registeredDomain)}`
+        ];
+    }
+
+    const errors = [];
+
+    for (const endpoint of endpoints) {
+        try {
+            const response = await fetch(endpoint, {
+                headers: {
+                    Accept: "application/rdap+json, application/json",
+                    "User-Agent": "ScamLens/1.0"
+                },
+                signal: AbortSignal.timeout(10000)
+            });
+
+            if (!response.ok) {
+                errors.push(`HTTP ${response.status}`);
+                continue;
+            }
+
+            const data = await response.json();
+            const events = Array.isArray(data.events) ? data.events : [];
+
+            const registrationEvent = events.find(event =>
+                ["registration", "registered"].includes(
+                    String(event.eventAction || "").toLowerCase()
+                )
+            );
+
+            if (!registrationEvent?.eventDate) {
+                errors.push("registration date not provided");
+                continue;
+            }
+
+            const registrationTime = Date.parse(registrationEvent.eventDate);
+
+            if (
+                !Number.isFinite(registrationTime) ||
+                registrationTime > Date.now()
+            ) {
+                errors.push("invalid registration date");
+                continue;
+            }
+
+            const ageDays = Math.floor(
+                (Date.now() - registrationTime) / 86400000
+            );
+
+            return {
+                status: "checked",
+                registrationDate: new Date(registrationTime).toISOString(),
+                ageDays,
+                message:
+                    `Domain is approximately ${ageDays} days old based on its RDAP registration date.`
+            };
+        } catch (error) {
+            errors.push(
+                error.cause?.code || error.message || "request failed"
+            );
+
+            console.warn(
+                `RDAP lookup failed for ${endpoint}:`,
+                error.message
+            );
+        }
+    }
+
+    return {
+        status: "unavailable",
+        registrationDate: null,
+        ageDays: null,
+        message: errors.length
+            ? `Domain registration age could not be checked (${errors.join("; ")}).`
+            : "Domain registration age could not be checked."
+    };
+}
+
+// Check a limited HTTP redirect chain using HEAD requests.
+// Destinations resolving to private/local IPs are blocked.
+async function checkRedirectChain(startUrl) {
+    const maxRedirects = 5;
+    const redirects = [];
+    let currentUrl = new URL(startUrl);
+
+    try {
+        for (let hop = 0; hop <= maxRedirects; hop++) {
+            if (!["http:", "https:"].includes(currentUrl.protocol)) {
+                return {
+                    status: "blocked",
+                    redirectCount: redirects.length,
+                    finalUrl: null,
+                    redirects,
+                    message: "An unsupported redirect protocol was blocked."
+                };
+            }
+
+            if (currentUrl.username || currentUrl.password) {
+                return {
+                    status: "blocked",
+                    redirectCount: redirects.length,
+                    finalUrl: null,
+                    redirects,
+                    message:
+                        "A URL containing embedded credentials was blocked."
+                };
+            }
+
+            let publicHost = false;
+
+            try {
+                publicHost = await hostnameHasOnlyPublicAddresses(
+                    currentUrl.hostname
+                );
+            } catch {
+                publicHost = false;
+            }
+
+            if (!publicHost) {
+                return {
+                    status: "blocked",
+                    redirectCount: redirects.length,
+                    finalUrl: null,
+                    redirects,
+                    message:
+                        "The destination was local, private, reserved, or could not be resolved."
+                };
+            }
+
+            const response = await fetch(currentUrl.href, {
+                method: "HEAD",
+                redirect: "manual",
+                signal: AbortSignal.timeout(5000),
+                headers: {
+                    "User-Agent": "ScamLens-Redirect-Check/1.0"
+                }
+            });
+
+            const location = response.headers.get("location");
+            const redirectStatus = [301, 302, 303, 307, 308]
+                .includes(response.status);
+
+            if (!redirectStatus || !location) {
+                return {
+                    status: "checked",
+                    redirectCount: redirects.length,
+                    finalUrl: currentUrl.href,
+                    redirects,
+                    message: redirects.length
+                        ? `The redirect check found ${redirects.length} redirect(s).`
+                        : "No HTTP redirect was found by the HEAD-request check. Some sites may behave differently for browser or GET requests."
+                };
+            }
+
+            if (hop === maxRedirects) {
+                return {
+                    status: "limit_reached",
+                    redirectCount: redirects.length,
+                    finalUrl: currentUrl.href,
+                    redirects,
+                    message:
+                        `The redirect check reached its limit of ${maxRedirects} redirects.`
+                };
+            }
+
+            let nextUrl;
+
+            try {
+                nextUrl = new URL(location, currentUrl);
+            } catch {
+                return {
+                    status: "unavailable",
+                    redirectCount: redirects.length,
+                    finalUrl: null,
+                    redirects,
+                    message:
+                        "The server returned an invalid redirect destination."
+                };
+            }
+
+            redirects.push({
+                statusCode: response.status,
+                from: currentUrl.href,
+                to: nextUrl.href
+            });
+
+            currentUrl = nextUrl;
+        }
+    } catch (error) {
+        console.error("Redirect check failed:", error.message);
+
+        return {
+            status: "unavailable",
+            redirectCount: redirects.length,
+            finalUrl: null,
+            redirects,
+            message:
+                "The redirect chain could not be fully checked. The site may block HEAD requests or the request may have timed out."
+        };
+    }
+
+    return {
+        status: "unavailable",
+        redirectCount: redirects.length,
+        finalUrl: null,
+        redirects,
+        message: "The redirect chain could not be fully checked."
+    };
+}
 app.post("/api/scan", async (req, res) => {
     const submittedUrl = req.body?.url;
 
@@ -637,7 +870,7 @@ app.post("/api/scan", async (req, res) => {
     if (submittedUrl.length > 2048) {
         return res.status(400).json({
             status: "error",
-            message: "The URL is too long. Please enter a URL under 2,048 characters."
+            message: "The URL is too long."
         });
     }
 
@@ -648,28 +881,36 @@ app.post("/api/scan", async (req, res) => {
     } catch {
         return res.status(400).json({
             status: "error",
-            message: "Please enter a valid URL, including https:// or http://."
+            message: "Enter a valid URL, including https:// or http://."
         });
     }
 
     if (
         !["http:", "https:"].includes(parsedUrl.protocol) ||
         !parsedUrl.hostname ||
-        !parsedUrl.hostname.includes(".")
+        !parsedUrl.hostname.includes(".") ||
+        parsedUrl.username ||
+        parsedUrl.password
     ) {
         return res.status(400).json({
             status: "error",
-            message: "Please enter a valid HTTP or HTTPS website URL."
+            message: "Enter a valid HTTP or HTTPS website URL without embedded credentials."
         });
     }
 
-    // Run local checks and reputation checks.
     const urlAnalysis = analyseUrl(parsedUrl);
     const shoppingAnalysis = analyseShoppingUrl(parsedUrl);
 
-    const [reputation, virusTotal] = await Promise.all([
+    const [
+        reputation,
+        virusTotal,
+        domainAge,
+        redirectCheck
+    ] = await Promise.all([
         checkUrlhaus(parsedUrl.href),
-        checkVirusTotal(parsedUrl.href)
+        checkVirusTotal(parsedUrl.href),
+        checkDomainAge(parsedUrl.hostname),
+        checkRedirectChain(parsedUrl.href)
     ]);
 
     const findings = [
@@ -677,7 +918,6 @@ app.post("/api/scan", async (req, res) => {
         ...shoppingAnalysis.signals
     ];
 
-    // Local signals have a maximum contribution of 60 points.
     const localScore = Math.min(
         urlAnalysis.score + shoppingAnalysis.score,
         60
@@ -685,7 +925,6 @@ app.post("/api/scan", async (req, res) => {
 
     let reputationScore = 0;
 
-    // URLhaus: a known malware-related listing is a strong signal.
     if (reputation.status === "listed") {
         reputationScore = Math.max(reputationScore, 60);
 
@@ -694,21 +933,15 @@ app.post("/api/scan", async (req, res) => {
             message:
                 "URLhaus lists this URL as associated with malware distribution."
         });
-    } else if (reputation.status === "not_listed") {
-        findings.push({
-            points: 0,
-            message:
-                "URLhaus found no listing. This does not prove the website is safe."
-        });
     } else {
         findings.push({
             points: 0,
-            message:
-                "URLhaus could not provide a complete reputation result."
+            message: reputation.status === "not_listed"
+                ? "URLhaus found no listing. This does not prove the website is safe."
+                : "URLhaus could not provide a complete reputation result."
         });
     }
 
-    // VirusTotal detections provide evidence, not a probability.
     if (virusTotal.status === "malicious") {
         const maliciousCount = Number(virusTotal.malicious) || 0;
 
@@ -723,7 +956,7 @@ app.post("/api/scan", async (req, res) => {
         findings.push({
             points: vtRisk,
             message:
-                `VirusTotal reports ${maliciousCount} malicious detection(s).`
+                `VirusTotal reports ${maliciousCount} malicious engine detection(s) for this URL.`
         });
     } else if (virusTotal.status === "suspicious") {
         reputationScore = Math.max(reputationScore, 15);
@@ -733,21 +966,15 @@ app.post("/api/scan", async (req, res) => {
             message:
                 `VirusTotal reports ${Number(virusTotal.suspicious) || 0} suspicious detection(s).`
         });
-    } else if (virusTotal.status === "analyzed") {
-        findings.push({
-            points: 0,
-            message:
-                "VirusTotal reported no malicious or suspicious detections in its existing analysis. This does not guarantee safety."
-        });
     } else {
         findings.push({
             points: 0,
-            message:
-                "VirusTotal did not provide a usable existing analysis. No safety assumption was made."
+            message: virusTotal.status === "analyzed"
+                ? "VirusTotal reported no malicious or suspicious detections in its existing analysis. This does not guarantee safety."
+                : "VirusTotal could not provide a usable existing analysis."
         });
     }
 
-    // Combine local and reputation evidence.
     const score = Math.min(
         localScore + reputationScore,
         100
@@ -766,30 +993,46 @@ app.post("/api/scan", async (req, res) => {
         virusTotal.status === "malicious"
     )
         ? [
-            "Do not open this link or enter credentials or payment details.",
-            "Verify the seller or sender using an independently obtained official contact method."
+            "Avoid opening this link or entering credentials or payment details.",
+            "Verify the seller using an independently obtained official contact method."
         ]
-        : virusTotal.status === "suspicious" || score >= 40
+        : score >= 40 || virusTotal.status === "suspicious"
             ? [
-                "Pause and verify the exact registered domain independently.",
+                "Verify the exact registered domain independently.",
                 "Do not enter passwords, OTPs, UPI PINs, or payment details until verified."
             ]
-            : score >= 20
-                ? [
-                    "Review the warning signals and verify the website through an official source before buying."
-                ]
-                : [
-                    "No major warning signals were identified by the checks available for this scan.",
-                    "This is not proof of safety; verify the seller and payment method before buying."
-                ];
+            : [
+                "Review all available warning signals before buying.",
+                "A low score does not guarantee safety; verify the seller and payment method independently."
+            ];
+
+    const trustProfile = {
+        hostname: parsedUrl.hostname,
+        registeredDomain: shoppingAnalysis.registeredDomain,
+        protocol: parsedUrl.protocol.replace(":", "").toUpperCase(),
+        usesHttps: parsedUrl.protocol === "https:",
+        port: parsedUrl.port ||
+            (parsedUrl.protocol === "https:" ? "443" : "80"),
+        domainAge,
+        redirects: redirectCheck
+    };
+
+    const scoreBreakdown = {
+        urlPatternScore: urlAnalysis.score,
+        shoppingScore: shoppingAnalysis.score,
+        localScore,
+        reputationScore
+    };
 
     return res.json({
         status: "success",
         url: parsedUrl.href,
+        trustProfile,
+        scoreBreakdown,
         score,
         riskLabel,
         recommendations,
-        findings: findings.map(finding => finding.message),
+        findings: findings.map(item => item.message),
         findingDetails: findings,
 
         shoppingAnalysis: {
@@ -804,11 +1047,11 @@ app.post("/api/scan", async (req, res) => {
         virusTotal,
 
         disclaimer:
-            "This is a preliminary risk assessment, not a verified fraud verdict or probability of fraud. Shopping-domain checks are heuristic and may flag legitimate sites. URLhaus focuses on URLs associated with malware distribution and does not detect every phishing or shopping scam. A URL not listed by URLhaus, or one with no VirusTotal detections, is not guaranteed to be safe. VirusTotal results reflect an existing third-party analysis and may be unavailable or outdated. ScamLens does not visit or submit the URL for a new scan."
+            "This is a preliminary risk assessment, not a verified fraud verdict or probability of fraud. Domain age and redirect checks may be unavailable or incomplete. URLhaus and VirusTotal results do not guarantee safety. ScamLens does not submit a new URL to VirusTotal for analysis."
     });
 });
 
-// Handle invalid JSON and unexpected server errors.
+// Handle malformed JSON and unexpected server errors.
 app.use((err, req, res, next) => {
     if (err instanceof SyntaxError && "body" in err) {
         return res.status(400).json({
