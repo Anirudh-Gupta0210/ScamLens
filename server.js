@@ -558,3 +558,517 @@ async function checkVirusTotal(url) {
         };
     }
 }
+function isPublicIp(address) {
+    const family = net.isIP(address);
+
+    if (family === 4) {
+        const [a, b] = address.split(".").map(Number);
+
+        if (
+            a === 0 ||
+            a === 10 ||
+            a === 127 ||
+            (a === 100 && b >= 64 && b <= 127) ||
+            (a === 169 && b === 254) ||
+            (a === 172 && b >= 16 && b <= 31) ||
+            (a === 192 && b === 168) ||
+            (a === 192 && b === 0) ||
+            (a === 198 && (b === 18 || b === 19)) ||
+            a >= 224
+        ) {
+            return false;
+        }
+
+        return true;
+    }
+
+    if (family === 6) {
+        const normalized = address.toLowerCase();
+
+        if (
+            normalized === "::" ||
+            normalized === "::1" ||
+            normalized.startsWith("fc") ||
+            normalized.startsWith("fd") ||
+            normalized.startsWith("fe8") ||
+            normalized.startsWith("fe9") ||
+            normalized.startsWith("fea") ||
+            normalized.startsWith("feb") ||
+            normalized.startsWith("ff")
+        ) {
+            return false;
+        }
+
+        return true;
+    }
+
+    return false;
+}
+
+async function hostnameHasOnlyPublicAddresses(hostname) {
+    const cleanHost = hostname.toLowerCase().replace(/^\[|\]$/g, "");
+
+    if (
+        cleanHost === "localhost" ||
+        cleanHost.endsWith(".localhost") ||
+        cleanHost.endsWith(".local") ||
+        cleanHost.endsWith(".internal")
+    ) {
+        return false;
+    }
+
+    if (net.isIP(cleanHost)) {
+        return isPublicIp(cleanHost);
+    }
+
+    const records = await dns.lookup(cleanHost, {
+        all: true,
+        verbatim: true
+    });
+
+    return records.length > 0 &&
+        records.every(record => isPublicIp(record.address));
+}
+
+// Look up the registration event using RDAP.
+async function checkDomainAge(hostname) {
+    const registeredDomain = getApproximateRegisteredDomain(hostname);
+    const tld = registeredDomain.split(".").pop().toLowerCase();
+
+    let endpoints = [];
+
+    if (tld === "in") {
+        endpoints = [
+            `https://rdap.nixiregistry.in/rdap/domain/${encodeURIComponent(registeredDomain)}`,
+            `https://rdap.org/domain/${encodeURIComponent(registeredDomain)}`
+        ];
+    } else if (tld === "com") {
+        endpoints = [
+            `https://rdap.verisign.com/com/v1/domain/${encodeURIComponent(registeredDomain)}`,
+            `https://rdap.org/domain/${encodeURIComponent(registeredDomain)}`
+        ];
+    } else {
+        endpoints = [
+            `https://rdap.org/domain/${encodeURIComponent(registeredDomain)}`
+        ];
+    }
+
+    const errors = [];
+
+    for (const endpoint of endpoints) {
+        try {
+            const response = await fetch(endpoint, {
+                headers: {
+                    Accept: "application/rdap+json, application/json",
+                    "User-Agent": "ScamLens/1.0"
+                },
+                signal: AbortSignal.timeout(10000)
+            });
+
+            if (!response.ok) {
+                errors.push(`HTTP ${response.status}`);
+                continue;
+            }
+
+            const data = await response.json();
+            const events = Array.isArray(data.events) ? data.events : [];
+
+            const registrationEvent = events.find(event =>
+                ["registration", "registered"].includes(
+                    String(event.eventAction || "").toLowerCase()
+                )
+            );
+
+            if (!registrationEvent?.eventDate) {
+                errors.push("registration date not provided");
+                continue;
+            }
+
+            const registrationTime = Date.parse(registrationEvent.eventDate);
+
+            if (
+                !Number.isFinite(registrationTime) ||
+                registrationTime > Date.now()
+            ) {
+                errors.push("invalid registration date");
+                continue;
+            }
+
+            const ageDays = Math.floor(
+                (Date.now() - registrationTime) / 86400000
+            );
+
+            return {
+                status: "checked",
+                registrationDate: new Date(registrationTime).toISOString(),
+                ageDays,
+                message:
+                    `Domain is approximately ${ageDays} days old based on its RDAP registration date.`
+            };
+        } catch (error) {
+            errors.push(
+                error.cause?.code || error.message || "request failed"
+            );
+
+            console.warn(
+                `RDAP lookup failed for ${endpoint}:`,
+                error.message
+            );
+        }
+    }
+
+    return {
+        status: "unavailable",
+        registrationDate: null,
+        ageDays: null,
+        message: errors.length
+            ? `Domain registration age could not be checked (${errors.join("; ")}).`
+            : "Domain registration age could not be checked."
+    };
+}
+
+// Check a limited HTTP redirect chain using HEAD requests.
+// Destinations resolving to private/local IPs are blocked.
+async function checkRedirectChain(startUrl) {
+    const maxRedirects = 5;
+    const redirects = [];
+    let currentUrl = new URL(startUrl);
+
+    try {
+        for (let hop = 0; hop <= maxRedirects; hop++) {
+            if (!["http:", "https:"].includes(currentUrl.protocol)) {
+                return {
+                    status: "blocked",
+                    redirectCount: redirects.length,
+                    finalUrl: null,
+                    redirects,
+                    message: "An unsupported redirect protocol was blocked."
+                };
+            }
+
+            if (currentUrl.username || currentUrl.password) {
+                return {
+                    status: "blocked",
+                    redirectCount: redirects.length,
+                    finalUrl: null,
+                    redirects,
+                    message:
+                        "A URL containing embedded credentials was blocked."
+                };
+            }
+
+            let publicHost = false;
+
+            try {
+                publicHost = await hostnameHasOnlyPublicAddresses(
+                    currentUrl.hostname
+                );
+            } catch {
+                publicHost = false;
+            }
+
+            if (!publicHost) {
+                return {
+                    status: "blocked",
+                    redirectCount: redirects.length,
+                    finalUrl: null,
+                    redirects,
+                    message:
+                        "The destination was local, private, reserved, or could not be resolved."
+                };
+            }
+
+            const response = await fetch(currentUrl.href, {
+                method: "HEAD",
+                redirect: "manual",
+                signal: AbortSignal.timeout(5000),
+                headers: {
+                    "User-Agent": "ScamLens-Redirect-Check/1.0"
+                }
+            });
+
+            const location = response.headers.get("location");
+
+            const redirectStatus = [301, 302, 303, 307, 308]
+                .includes(response.status);
+
+            if (!redirectStatus || !location) {
+                return {
+                    status: "checked",
+                    redirectCount: redirects.length,
+                    finalUrl: currentUrl.href,
+                    redirects,
+                    message: redirects.length
+                        ? `The redirect check found ${redirects.length} redirect(s).`
+                        : "No HTTP redirect was found by the HEAD-request check. Some sites may behave differently for browser or GET requests."
+                };
+            }
+
+            if (hop === maxRedirects) {
+                return {
+                    status: "limit_reached",
+                    redirectCount: redirects.length,
+                    finalUrl: currentUrl.href,
+                    redirects,
+                    message:
+                        `The redirect check reached its limit of ${maxRedirects} redirects.`
+                };
+            }
+
+            let nextUrl;
+
+            try {
+                nextUrl = new URL(location, currentUrl);
+            } catch {
+                return {
+                    status: "unavailable",
+                    redirectCount: redirects.length,
+                    finalUrl: null,
+                    redirects,
+                    message:
+                        "The server returned an invalid redirect destination."
+                };
+            }
+
+            redirects.push({
+                statusCode: response.status,
+                from: currentUrl.href,
+                to: nextUrl.href
+            });
+
+            currentUrl = nextUrl;
+        }
+    } catch (error) {
+        console.error("Redirect check failed:", error.message);
+
+        return {
+            status: "unavailable",
+            redirectCount: redirects.length,
+            finalUrl: null,
+            redirects,
+            message:
+                "The redirect chain could not be fully checked. The site may block HEAD requests or the request may have timed out."
+        };
+    }
+
+    return {
+        status: "unavailable",
+        redirectCount: redirects.length,
+        finalUrl: null,
+        redirects,
+        message: "The redirect chain could not be fully checked."
+    };
+}
+app.post("/api/scan", async (req, res) => {
+    const submittedUrl = req.body?.url;
+
+    if (typeof submittedUrl !== "string" || !submittedUrl.trim()) {
+        return res.status(400).json({
+            status: "error",
+            message: "Please provide a URL to scan."
+        });
+    }
+
+    if (submittedUrl.length > 2048) {
+        return res.status(400).json({
+            status: "error",
+            message: "The URL is too long."
+        });
+    }
+
+    let parsedUrl;
+
+    try {
+        parsedUrl = new URL(submittedUrl.trim());
+    } catch {
+        return res.status(400).json({
+            status: "error",
+            message: "Enter a valid URL, including https:// or http://."
+        });
+    }
+
+    if (
+        !["http:", "https:"].includes(parsedUrl.protocol) ||
+        !parsedUrl.hostname ||
+        !parsedUrl.hostname.includes(".") ||
+        parsedUrl.username ||
+        parsedUrl.password
+    ) {
+        return res.status(400).json({
+            status: "error",
+            message: "Enter a valid HTTP or HTTPS website URL without embedded credentials."
+        });
+    }
+
+    const urlAnalysis = analyseUrl(parsedUrl);
+    const shoppingAnalysis = analyseShoppingUrl(parsedUrl);
+
+    const [
+        reputation,
+        virusTotal,
+        domainAge,
+        redirectCheck
+    ] = await Promise.all([
+        checkUrlhaus(parsedUrl.href),
+        checkVirusTotal(parsedUrl.href),
+        checkDomainAge(parsedUrl.hostname),
+        checkRedirectChain(parsedUrl.href)
+    ]);
+
+    const findings = [
+        ...urlAnalysis.findings,
+        ...shoppingAnalysis.signals
+    ];
+
+    const localScore = Math.min(
+        urlAnalysis.score + shoppingAnalysis.score,
+        60
+    );
+
+    let reputationScore = 0;
+
+    if (reputation.status === "listed") {
+        reputationScore = Math.max(reputationScore, 60);
+
+        findings.push({
+            points: 60,
+            message:
+                "URLhaus lists this URL as associated with malware distribution."
+        });
+    } else {
+        findings.push({
+            points: 0,
+            message: reputation.status === "not_listed"
+                ? "URLhaus found no listing. This does not prove the website is safe."
+                : "URLhaus could not provide a complete reputation result."
+        });
+    }
+
+    if (virusTotal.status === "malicious") {
+        const maliciousCount = Number(virusTotal.malicious) || 0;
+
+        const vtRisk = maliciousCount >= 5
+            ? 50
+            : maliciousCount >= 3
+                ? 40
+                : 30;
+
+        reputationScore = Math.max(reputationScore, vtRisk);
+
+        findings.push({
+            points: vtRisk,
+            message:
+                `VirusTotal reports ${maliciousCount} malicious engine detection(s) for this URL.`
+        });
+    } else if (virusTotal.status === "suspicious") {
+        reputationScore = Math.max(reputationScore, 15);
+
+        findings.push({
+            points: 15,
+            message:
+                `VirusTotal reports ${Number(virusTotal.suspicious) || 0} suspicious detection(s).`
+        });
+    } else {
+        findings.push({
+            points: 0,
+            message: virusTotal.status === "analyzed"
+                ? "VirusTotal reported no malicious or suspicious detections in its existing analysis. This does not guarantee safety."
+                : "VirusTotal could not provide a usable existing analysis."
+        });
+    }
+
+    const score = Math.min(
+        localScore + reputationScore,
+        100
+    );
+
+    const riskLabel = score >= 70
+        ? "High Risk"
+        : score >= 40
+            ? "Medium Risk"
+            : score >= 20
+                ? "Use Caution"
+                : "Fewer Warning Signals";
+
+    const recommendations = (
+        reputation.status === "listed" ||
+        virusTotal.status === "malicious"
+    )
+        ? [
+            "Avoid opening this link or entering credentials or payment details.",
+            "Verify the seller using an independently obtained official contact method."
+        ]
+        : score >= 40 || virusTotal.status === "suspicious"
+            ? [
+                "Verify the exact registered domain independently.",
+                "Do not enter passwords, OTPs, UPI PINs, or payment details until verified."
+            ]
+            : [
+                "Review all available warning signals before buying.",
+                "A low score does not guarantee safety; verify the seller and payment method independently."
+            ];
+
+    const trustProfile = {
+        hostname: parsedUrl.hostname,
+        registeredDomain: shoppingAnalysis.registeredDomain,
+        protocol: parsedUrl.protocol.replace(":", "").toUpperCase(),
+        usesHttps: parsedUrl.protocol === "https:",
+        port: parsedUrl.port ||
+            (parsedUrl.protocol === "https:" ? "443" : "80"),
+        domainAge,
+        redirects: redirectCheck
+    };
+
+    const scoreBreakdown = {
+        urlPatternScore: urlAnalysis.score,
+        shoppingScore: shoppingAnalysis.score,
+        localScore,
+        reputationScore
+    };
+
+    return res.json({
+        status: "success",
+        url: parsedUrl.href,
+        trustProfile,
+        scoreBreakdown,
+        score,
+        riskLabel,
+        recommendations,
+        findings: findings.map(item => item.message),
+        findingDetails: findings,
+        shoppingAnalysis: {
+            registeredDomain: shoppingAnalysis.registeredDomain,
+            score: shoppingAnalysis.score,
+            signals: shoppingAnalysis.signals,
+            note:
+                "Shopping-domain and URL-pattern checks are heuristic, not proof of fraud."
+        },
+        reputation,
+        virusTotal,
+        disclaimer:
+            "This is a preliminary risk assessment, not a verified fraud verdict or probability of fraud. Domain age and redirect checks may be unavailable or incomplete. URLhaus and VirusTotal results do not guarantee safety. ScamLens does not submit a new URL to VirusTotal for analysis."
+    });
+});
+
+// Handle malformed JSON and unexpected server errors.
+app.use((err, req, res, next) => {
+    if (err instanceof SyntaxError && "body" in err) {
+        return res.status(400).json({
+            status: "error",
+            message: "The request body must contain valid JSON."
+        });
+    }
+
+    console.error("ScamLens server error:", err.message);
+
+    return res.status(500).json({
+        status: "error",
+        message: "An unexpected server error occurred."
+    });
+});
+
+app.listen(PORT, () => {
+    console.log(
+        `ScamLens backend running at http://localhost:${PORT}`
+    );
+});
