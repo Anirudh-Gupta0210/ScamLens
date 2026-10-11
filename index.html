@@ -132,6 +132,11 @@
 
 .auth-field input:focus { border-color:#ff3f6c; box-shadow:0 0 0 3px rgba(255,63,108,.12); }
 
+.auth-password-wrap { position:relative; display:flex; align-items:center; }
+.auth-password-wrap input { padding-right:72px; }
+.auth-password-toggle { position:absolute; right:10px; border:0; padding:6px 4px; background:transparent; color:#d92d59; font:inherit; font-size:12px; font-weight:800; cursor:pointer; }
+.auth-password-toggle:focus-visible { outline:2px solid #ff3f6c; outline-offset:2px; border-radius:4px; }
+
 
 
 .auth-forgot { justify-self:end; border:0; padding:0; background:transparent; color:#d92d59; font:inherit; font-size:12px; font-weight:700; cursor:pointer; }
@@ -1110,7 +1115,13 @@ Check a link <i class="fa-solid fa-arrow-right"></i>
 
 
 
-        <input id="authPassword" type="password" autocomplete="current-password" minlength="6" placeholder="At least 6 characters" required>
+        <div class="auth-password-wrap">
+
+          <input id="authPassword" type="password" autocomplete="current-password" minlength="6" placeholder="At least 6 characters" required>
+
+          <button type="button" class="auth-password-toggle" id="toggleAuthPassword" aria-controls="authPassword" aria-pressed="false">Show</button>
+
+        </div>
 
 
 
@@ -3662,6 +3673,38 @@ const email = document.getElementById("authEmail");
 
 
 const password = document.getElementById("authPassword");
+
+
+
+const togglePasswordButton = document.getElementById("toggleAuthPassword");
+
+
+
+togglePasswordButton.addEventListener("click", () => {
+
+
+
+  const shouldShow = password.type === "password";
+
+
+
+  password.type = shouldShow ? "text" : "password";
+
+
+
+  togglePasswordButton.textContent = shouldShow ? "Hide" : "Show";
+
+
+
+  togglePasswordButton.setAttribute("aria-pressed", String(shouldShow));
+
+
+
+  togglePasswordButton.setAttribute("aria-label", shouldShow ? "Hide password" : "Show password");
+
+
+
+});
 
 
 

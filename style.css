@@ -3396,3 +3396,45 @@ body.auth-locked { overflow: hidden; }
 .scan-coverage-item p { margin:8px 0 0; color:var(--muted, #687385); font-size:11px; line-height:1.65; }
 @media (max-width: 600px) { .scan-coverage-grid { grid-template-columns:1fr; } .scan-risk-meter-meta { font-size:10px; } }
 @media (prefers-reduced-motion: reduce) { .scan-risk-meter-fill { transition:none; } }
+
+
+/* Show/Hide Password — the only added CSS */
+.password-wrapper {
+    position: relative;
+    display: flex;
+    align-items: center;
+    width: 100%;
+}
+
+.password-wrapper input {
+    flex: 1;
+    width: 100%;
+    min-width: 0;
+    padding-right: 68px;
+}
+
+.toggle-password {
+    position: absolute;
+    right: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    padding: 4px 6px;
+    border: 0;
+    border-radius: 5px;
+    color: var(--primary-dark, #e62e59);
+    background: transparent;
+    font: inherit;
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.toggle-password:hover {
+    color: var(--primary, #ff3f6c);
+    text-decoration: underline;
+}
+
+.toggle-password:focus-visible {
+    outline: 2px solid var(--blue, #2874f0);
+    outline-offset: 2px;
+}
