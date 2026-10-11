@@ -3438,3 +3438,133 @@ body.auth-locked { overflow: hidden; }
     outline: 2px solid var(--blue, #2874f0);
     outline-offset: 2px;
 }
+
+
+/* ===== ScamLens feature additions: dark mode, scan trends, and score guidance ===== */
+:root { color-scheme: light; --risk-low: #16834a; --risk-medium: #b77900; --risk-high: #c6384d; }
+.theme-toggle { gap: 8px; white-space: nowrap; }
+.history-insights { display: grid; gap: 16px; margin: 0 0 24px; }
+.history-stat-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.history-stat, .history-trend-card, .score-interpretation-guide { border: 1px solid var(--border); border-radius: 14px; background: var(--white); box-shadow: 0 5px 18px rgba(32,38,50,.04); }
+.history-stat { display: grid; gap: 4px; padding: 17px; }
+.history-stat-label { color: var(--muted); font-size: 12px; font-weight: 650; }
+.history-stat strong { color: var(--text); font-size: 27px; line-height: 1.25; }
+.history-stat-note { color: var(--muted); font-size: 11px; }
+.history-trend-card { padding: 18px; }
+.history-trend-heading { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; flex-wrap: wrap; }
+.history-trend-heading h3 { margin: 0; color: var(--text); font-size: 16px; }
+.history-trend-heading p { margin: 3px 0 0; color: var(--muted); font-size: 12px; }
+.history-trend-key { display: inline-flex; align-items: center; gap: 7px; color: var(--muted); font-size: 11px; }
+.history-trend-key i { width: 8px; height: 8px; border-radius: 50%; background: var(--primary); }
+.history-trend-chart { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 12px; align-items: end; min-height: 150px; padding-top: 15px; }
+.history-trend-column { display: grid; grid-template-rows: 18px 100px 22px; gap: 5px; min-width: 0; text-align: center; }
+.history-trend-value { color: var(--text); font-size: 11px; font-weight: 800; }
+.history-trend-track { display: flex; align-items: flex-end; justify-content: center; height: 100px; border-radius: 8px; background: var(--background); overflow: hidden; }
+.history-trend-bar { width: min(34px, 70%); min-height: 4px; border-radius: 6px 6px 2px 2px; background: var(--bar-risk, var(--primary)); transition: height 180ms ease; }
+.history-trend-day { color: var(--muted); font-size: 10px; }
+.history-trend-empty { grid-column: 1 / -1; align-self: center; margin: 0; padding: 22px 8px; color: var(--muted); font-size: 12px; text-align: center; }
+.history-trend-note { margin: 10px 0 0; color: var(--muted); font-size: 10px; line-height: 1.6; }
+.score-interpretation-guide { display: grid; gap: 10px; margin: 0 0 14px; padding: 14px; box-shadow: none; }
+.score-interpretation-guide > strong { color: var(--text); font-size: 12px; }
+.score-guide-levels { display: flex; flex-wrap: wrap; gap: 10px 18px; }
+.score-guide-levels span { display: inline-flex; align-items: center; gap: 5px; color: var(--muted); font-size: 11px; }
+.score-guide-levels b { color: var(--text); }
+.score-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; }
+.score-dot-low { background: var(--risk-low); }
+.score-dot-medium { background: var(--risk-medium); }
+.score-dot-high { background: var(--risk-high); }
+.score-interpretation-guide p { margin: 0; color: var(--muted); font-size: 11px; line-height: 1.7; }
+
+html[data-theme="dark"] { color-scheme: dark; }
+html[data-theme="dark"] body { --text:#edf1f7; --muted:#aab4c4; --background:#151a23; --white:#1d2430; --border:#343d4c; --shadow:0 16px 42px rgba(0,0,0,.25); color:var(--text)!important; background:#11151c!important; }
+html[data-theme="dark"] .navbar,
+html[data-theme="dark"] .history-stat,
+html[data-theme="dark"] .history-trend-card,
+html[data-theme="dark"] .score-interpretation-guide,
+html[data-theme="dark"] .shopping-card,
+html[data-theme="dark"] .scan-results > *,
+html[data-theme="dark"] .scan-history-list article { color:var(--text)!important; background-color:#1d2430!important; border-color:var(--border)!important; }
+html[data-theme="dark"] .hero,
+html[data-theme="dark"] .scanner-section,
+html[data-theme="dark"] .features-section,
+html[data-theme="dark"] .how-section,
+html[data-theme="dark"] footer { color:var(--text); background-color:#11151c; }
+html[data-theme="dark"] .hero { background-image:radial-gradient(ellipse at 82% 44%,rgba(255,63,108,.12),transparent 36%),radial-gradient(ellipse at 94% 78%,rgba(255,153,0,.08),transparent 28%); }
+html[data-theme="dark"] .announcement { background:#090c11; }
+html[data-theme="dark"] .nav-links a,
+html[data-theme="dark"] .hero-points span,
+html[data-theme="dark"] .section-heading h2,
+html[data-theme="dark"] .hero h1,
+html[data-theme="dark"] .navbar .brand,
+html[data-theme="dark"] .history-trend-heading h3 { color:var(--text)!important; }
+html[data-theme="dark"] .nav-links a:hover { color:var(--primary)!important; }
+html[data-theme="dark"] input,
+html[data-theme="dark"] textarea,
+html[data-theme="dark"] select,
+html[data-theme="dark"] .url-input-wrap,
+html[data-theme="dark"] .scanner-form input { color:var(--text)!important; background:#151a23!important; border-color:var(--border)!important; }
+html[data-theme="dark"] .scan-results [style*="background:#fff"],
+html[data-theme="dark"] .scan-results [style*="background: #fff"],
+html[data-theme="dark"] .scan-results [style*="background:#fbfcfe"],
+html[data-theme="dark"] .scan-results [style*="background: #fbfcfe"],
+html[data-theme="dark"] .scan-results [style*="background:#f5f7fa"],
+html[data-theme="dark"] .scan-results [style*="background: #f5f7fa"] { background:#202938!important; border-color:var(--border)!important; }
+html[data-theme="dark"] .scan-results [style*="color:#202632"],
+html[data-theme="dark"] .scan-results [style*="color: #202632"],
+html[data-theme="dark"] .scan-results [style*="color:#364152"],
+html[data-theme="dark"] .scan-results [style*="color: #364152"],
+html[data-theme="dark"] .scan-history-list [style*="color:#202632"] { color:var(--text)!important; }
+html[data-theme="dark"] .scan-results [style*="color:#596579"],
+html[data-theme="dark"] .scan-results [style*="color: #596579"],
+html[data-theme="dark"] .scan-results [style*="color:#687385"],
+html[data-theme="dark"] .scan-results [style*="color: #687385"] { color:var(--muted)!important; }
+html[data-theme="dark"] .history-trend-track { background:#11151c; }
+html[data-theme="dark"] .auth-panel { background:#1d2430; color:var(--text); border-color:var(--border); }
+html[data-theme="dark"] .auth-panel h2, html[data-theme="dark"] .auth-field { color:var(--text); }
+html[data-theme="dark"] .auth-field input { background:#151a23; color:var(--text); border-color:var(--border); }
+html[data-theme="dark"] .auth-subtitle, html[data-theme="dark"] .auth-privacy { color:var(--muted); }
+@media (max-width:680px) {
+    .history-stat-grid { grid-template-columns:1fr; }
+    .history-stat { grid-template-columns:1fr auto; align-items:center; }
+    .history-stat-note { grid-column:1 / -1; }
+    .history-trend-card { padding:13px; }
+    .history-trend-chart { gap:6px; min-height:135px; }
+    .history-trend-column { grid-template-rows:18px 85px 22px; }
+    .history-trend-track { height:85px; }
+    .theme-toggle { padding:10px 12px; }
+}
+
+
+/* Dark-mode contrast fix for scan-history cards (including inline-styled text). */
+html[data-theme="dark"] .scan-history-list article p[style*="color:#202632"],
+html[data-theme="dark"] .scan-history-list article p[style*="color: #202632"] {
+    color: #edf1f7 !important;
+}
+html[data-theme="dark"] .scan-history-list article p[style*="color:#687385"],
+html[data-theme="dark"] .scan-history-list article p[style*="color: #687385"] {
+    color: #aab4c4 !important;
+}
+html[data-theme="dark"] .scan-history-list article {
+    color: #edf1f7 !important;
+}
+html[data-theme="dark"] .scan-history-list article a,
+html[data-theme="dark"] .scan-history-list article button {
+    color: inherit;
+}
+/* ScamLens: force readable text in dark-mode scan history */
+html[data-theme="dark"] .scan-history-list article p {
+    color: #edf1f7 !important;
+}
+
+html[data-theme="dark"] .scan-history-list article p + p {
+    color: #aab4c4 !important;
+}
+
+html[data-theme="dark"] .scan-history-list article {
+    background: #1d2430 !important;
+    border-color: #343d4c !important;
+}
+
+html[data-theme="dark"] .scan-history-list article button {
+    color: #d92d59;
+}
