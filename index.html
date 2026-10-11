@@ -276,6 +276,7 @@ Shop confidently. Check suspicious links before you buy.
 
 
 <button type="button" class="nav-button" id="accountButton">Sign in</button>
+<button type="button" class="nav-button theme-toggle" id="themeToggle" aria-label="Switch to dark mode" aria-pressed="false"><i class="fa-solid fa-moon" aria-hidden="true"></i><span>Dark mode</span></button>
 
 
 
@@ -727,7 +728,32 @@ Enter a website URL to run a preliminary risk analysis.
 
 
 
+    <div id="scanHistoryInsights" class="history-insights" aria-live="polite">
+        <div class="history-stat-grid">
+            <article class="history-stat"><span class="history-stat-label">Total scans</span><strong id="historyTotalScans">0</strong><span class="history-stat-note">Saved to your account</span></article>
+            <article class="history-stat"><span class="history-stat-label">Average risk score</span><strong id="historyAverageRisk">—</strong><span class="history-stat-note">Across saved scans</span></article>
+            <article class="history-stat"><span class="history-stat-label">Higher-risk scans</span><strong id="historyHighRisk">0</strong><span class="history-stat-note">Scores of 50 or more</span></article>
+        </div>
+        <div class="history-trend-card">
+            <div class="history-trend-heading"><div><h3>Risk trend</h3><p>Recent scans grouped by day</p></div><span class="history-trend-key"><i></i> Average score</span></div>
+            <div id="historyTrendChart" class="history-trend-chart"><p class="history-trend-empty">Your scan trend will appear here after you save scans.</p></div>
+            <p class="history-trend-note">Trends summarize your saved scan scores; they are not a prediction of future safety.</p>
+        </div>
+    </div>
     <div id="scanHistoryList" class="scan-history-list"></div>
+
+    <div class="watchlist-panel">
+        <div class="watchlist-heading">
+            <div><h3>Domain Watchlist</h3><p>Save domains you want to check again later. This does not continuously monitor them.</p></div>
+        </div>
+        <form id="watchlistForm" class="watchlist-form">
+            <label class="visually-hidden" for="watchlistDomain">Domain to watch</label>
+            <input id="watchlistDomain" type="text" placeholder="example.com or paste a URL" autocomplete="off" maxlength="2048" required>
+            <button type="submit" class="primary-button"><i class="fa-solid fa-plus"></i> Add domain</button>
+        </form>
+        <p id="watchlistMessage" class="watchlist-message" role="status" aria-live="polite">Sign in to save a personal domain watchlist.</p>
+        <div id="watchlistItems" class="watchlist-items"></div>
+    </div>
 
 
 
@@ -1169,6 +1195,33 @@ const scannerForm = document.getElementById("scannerForm");
 
 
 
+// Theme preference is stored locally on this browser.
+const themeToggle = document.getElementById("themeToggle");
+const themeLabel = themeToggle ? themeToggle.querySelector("span") : null;
+const themeIcon = themeToggle ? themeToggle.querySelector("i") : null;
+
+function applyTheme(theme) {
+    const isDark = theme === "dark";
+    document.documentElement.dataset.theme = isDark ? "dark" : "light";
+    document.body.classList.toggle("theme-dark", isDark);
+    if (themeToggle) {
+        themeToggle.setAttribute("aria-pressed", String(isDark));
+        themeToggle.setAttribute("aria-label", isDark ? "Switch to light mode" : "Switch to dark mode");
+    }
+    if (themeLabel) themeLabel.textContent = isDark ? "Light mode" : "Dark mode";
+    if (themeIcon) themeIcon.className = isDark ? "fa-solid fa-sun" : "fa-solid fa-moon";
+}
+let savedTheme = "light";
+try { savedTheme = localStorage.getItem("scamlens-theme") === "dark" ? "dark" : "light"; } catch (_) {}
+applyTheme(savedTheme);
+if (themeToggle) {
+    themeToggle.addEventListener("click", () => {
+        const nextTheme = document.documentElement.dataset.theme === "dark" ? "light" : "dark";
+        applyTheme(nextTheme);
+        try { localStorage.setItem("scamlens-theme", nextTheme); } catch (_) {}
+    });
+}
+
 const shoppingUrl = document.getElementById("shoppingUrl");
 
 
@@ -1397,6 +1450,65 @@ window.addEventListener("scamlens-auth-changed", () => {
 
 
 
+function renderHistoryInsights(history) {
+    const total = document.getElementById("historyTotalScans");
+    const average = document.getElementById("historyAverageRisk");
+    const highRisk = document.getElementById("historyHighRisk");
+    const chart = document.getElementById("historyTrendChart");
+    const entries = Array.isArray(history) ? history : [];
+    const scores = entries.map(entry => Math.max(0, Math.min(100, Number(entry.score) || 0)));
+    if (total) total.textContent = String(entries.length);
+    if (average) average.textContent = scores.length ? Math.round(scores.reduce((sum, value) => sum + value, 0) / scores.length) + "/100" : "—";
+    if (highRisk) highRisk.textContent = String(scores.filter(score => score >= 50).length);
+    if (!chart) return;
+    chart.replaceChildren();
+    if (!entries.length) {
+        const empty = document.createElement("p");
+        empty.className = "history-trend-empty";
+        empty.textContent = "Your scan trend will appear here after you save scans.";
+        chart.appendChild(empty);
+        return;
+    }
+    const daily = new Map();
+    entries.forEach(entry => {
+        const date = new Date(entry.scannedAt);
+        if (Number.isNaN(date.getTime())) return;
+        const key = date.getFullYear() + "-" + String(date.getMonth() + 1).padStart(2, "0") + "-" + String(date.getDate()).padStart(2, "0");
+        if (!daily.has(key)) daily.set(key, []);
+        daily.get(key).push(Math.max(0, Math.min(100, Number(entry.score) || 0)));
+    });
+    const points = Array.from(daily.entries()).sort((a, b) => a[0].localeCompare(b[0])).slice(-7);
+    if (!points.length) {
+        const empty = document.createElement("p");
+        empty.className = "history-trend-empty";
+        empty.textContent = "Dates are unavailable for these saved scans.";
+        chart.appendChild(empty);
+        return;
+    }
+    points.forEach(([day, values]) => {
+        const mean = Math.round(values.reduce((sum, value) => sum + value, 0) / values.length);
+        const column = document.createElement("div");
+        column.className = "history-trend-column";
+        const value = document.createElement("span");
+        value.className = "history-trend-value";
+        value.textContent = String(mean);
+        const track = document.createElement("div");
+        track.className = "history-trend-track";
+        const bar = document.createElement("div");
+        bar.className = "history-trend-bar";
+        bar.style.height = Math.max(4, mean) + "%";
+        bar.style.setProperty("--bar-risk", mean >= 50 ? "var(--risk-high)" : mean >= 25 ? "var(--risk-medium)" : "var(--risk-low)");
+        bar.setAttribute("role", "img");
+        bar.setAttribute("aria-label", "Average risk score " + mean + " out of 100");
+        track.appendChild(bar);
+        const label = document.createElement("span");
+        label.className = "history-trend-day";
+        label.textContent = new Date(day + "T12:00:00").toLocaleDateString(undefined, { month: "short", day: "numeric" });
+        column.append(value, track, label);
+        chart.appendChild(column);
+    });
+}
+
 function renderScanHistory() {
 
 
@@ -1410,6 +1522,7 @@ function renderScanHistory() {
 
 
     const history = getScanHistory();
+    renderHistoryInsights(history);
 
 
 
@@ -2293,7 +2406,7 @@ function createCard(title, subtitle) {
     addLabelValue(trustCard, "HTTPS URL", trustProfile.usesHttps === true ? "Yes — connection encryption indicated by URL scheme" : trustProfile.usesHttps === false ? "No — URL uses HTTP" : "Unknown");
     addLabelValue(trustCard, "Port", trustProfile.port || "Not specified");
     const domainAgeInfo = trustProfile.domainAge || {};
-    addLabelValue(trustCard, "Domain registration age", domainAgeInfo.status === "available" && domainAgeInfo.age ? domainAgeInfo.age : "Not checked");
+    addLabelValue(trustCard, "Domain registration age", domainAgeInfo.status === "checked" && Number.isFinite(Number(domainAgeInfo.ageDays)) ? `${domainAgeInfo.ageDays} days` : "Not checked / unavailable");
     if (domainAgeInfo.message) {
         const domainAgeNote = document.createElement("p");
         domainAgeNote.textContent = domainAgeInfo.message;
@@ -2325,6 +2438,7 @@ function createCard(title, subtitle) {
     [
         { label: "URL pattern signals", value: scoreBreakdown.urlPatternScore ?? "Unavailable" },
         { label: "Shopping signals", value: scoreBreakdown.shoppingScore ?? (result.shoppingAnalysis || {}).score ?? "Unavailable" },
+        { label: "Domain age signal", value: scoreBreakdown.domainAgeScore ?? "Unavailable" },
         { label: "Local signal total", value: scoreBreakdown.localScore ?? "Unavailable" },
         { label: "Reputation contribution", value: scoreBreakdown.reputationScore ?? "Unavailable" }
     ].forEach(metric => {
@@ -2340,6 +2454,11 @@ function createCard(title, subtitle) {
         breakdownSummary.appendChild(tile);
     });
     breakdownCard.appendChild(breakdownSummary);
+
+    const scoreGuide = document.createElement("div");
+    scoreGuide.className = "score-interpretation-guide";
+    scoreGuide.innerHTML = '<strong>How to read this score</strong><div class="score-guide-levels"><span><i class="score-dot score-dot-low"></i><b>0–24</b> Fewer signals</span><span><i class="score-dot score-dot-medium"></i><b>25–49</b> Use caution</span><span><i class="score-dot score-dot-high"></i><b>50–100</b> Higher risk signals</span></div><p>The score is a heuristic summary of signals detected by the available checks, not a percentage chance of fraud. Missing reputation data and a low score do not prove a website is safe.</p>';
+    breakdownCard.appendChild(scoreGuide);
     const evidenceList = document.createElement("div");
     evidenceList.style.cssText = "display:grid;gap:10px;";
     const evidenceItems = Array.isArray(scoreBreakdown.findings) ? scoreBreakdown.findings : (Array.isArray(result.findingDetails) ? result.findingDetails : []);
@@ -3374,11 +3493,187 @@ function createCard(title, subtitle) {
 
     scanResults.appendChild(disclaimerCard);
 
+    // Redirect Journey Viewer: show only destinations returned by the backend's bounded inspection.
+    const journey = result.trustProfile && result.trustProfile.redirects
+        ? result.trustProfile.redirects : {};
+    const journeyCard = createCard(
+        "Redirect Journey",
+        "A limited server-side HEAD check. Some websites behave differently for browsers or GET requests."
+    );
+    const journeyStatus = document.createElement("p");
+    journeyStatus.className = "redirect-journey-status";
+    journeyStatus.textContent = journey.message || "Redirect inspection details are unavailable.";
+    journeyCard.appendChild(journeyStatus);
+    const journeyList = document.createElement("ol");
+    journeyList.className = "redirect-journey-list";
+    const startStep = document.createElement("li");
+    startStep.textContent = "Submitted URL: " + (result.url || shoppingUrl.value.trim());
+    journeyList.appendChild(startStep);
+    (Array.isArray(journey.redirects) ? journey.redirects : []).forEach((hop, index) => {
+        const step = document.createElement("li");
+        step.textContent = `Hop ${index + 1}${hop.statusCode ? " · HTTP " + hop.statusCode : ""}: ${hop.to || "Destination unavailable"}`;
+        journeyList.appendChild(step);
+    });
+    if (journey.finalUrl) {
+        const finalStep = document.createElement("li");
+        finalStep.textContent = "Observed final URL: " + journey.finalUrl;
+        journeyList.appendChild(finalStep);
+    }
+    journeyCard.appendChild(journeyList);
+    scanResults.appendChild(journeyCard);
 
+    // Threat-intelligence coverage: distinguish clean/no-report responses from unavailable providers.
+    const intelCard = createCard(
+        "Threat Intelligence Sources",
+        "Provider responses are evidence, not a guarantee. A missing listing or report does not mean a URL is safe."
+    );
+    const sources = Array.isArray(result.intelligenceSources) ? result.intelligenceSources : [
+        { provider: "URLhaus", status: (result.reputation || {}).status, summary: (result.reputation || {}).message },
+        { provider: "VirusTotal", status: (result.virusTotal || {}).status, summary: (result.virusTotal || {}).message },
+        { provider: "RDAP domain registration", status: (result.trustProfile || {}).domainAge || {}, summary: ((result.trustProfile || {}).domainAge || {}).message },
+        { provider: "Redirect inspection", status: journey.status, summary: journey.message }
+    ];
+    const intelList = document.createElement("div");
+    intelList.className = "intel-source-list";
+    sources.forEach(source => {
+        const item = document.createElement("article");
+        item.className = "intel-source-item";
+        const title = document.createElement("strong");
+        title.textContent = source.provider || "Source";
+        const status = document.createElement("span");
+        const statusValue = typeof source.status === "object" ? source.status.status : source.status;
+        status.textContent = String(statusValue || "unknown").replaceAll("_", " ");
+        status.className = "intel-status";
+        const detail = document.createElement("p");
+        detail.textContent = source.summary || "No provider details returned.";
+        item.append(title, status, detail);
+        intelList.appendChild(item);
+    });
+    intelCard.appendChild(intelList);
+    const checkedAt = document.createElement("p");
+    checkedAt.className = "intel-checked-at";
+    const checkedDate = new Date(result.checkedAt || Date.now());
+    checkedAt.textContent = "Checked at: " + (Number.isNaN(checkedDate.getTime()) ? "time unavailable" : checkedDate.toLocaleString());
+    intelCard.appendChild(checkedAt);
+    scanResults.appendChild(intelCard);
 
+    const reportActions = document.createElement("div");
+    reportActions.className = "scan-report-actions";
+    const downloadButton = document.createElement("button");
+    downloadButton.type = "button";
+    downloadButton.className = "primary-button";
+    downloadButton.innerHTML = '<i class="fa-solid fa-file-arrow-down" aria-hidden="true"></i> Download scan report';
+    downloadButton.addEventListener("click", () => downloadScanReport(result));
+    reportActions.appendChild(downloadButton);
+    scanResults.appendChild(reportActions);
 }
 
 
+
+function downloadScanReport(result) {
+    const report = {
+        reportTitle: "ScamLens URL Risk Assessment",
+        exportedAt: new Date().toISOString(),
+        notice: "Preliminary assessment only. This is not a verified fraud verdict and does not guarantee safety.",
+        scan: result
+    };
+    const blob = new Blob([JSON.stringify(report, null, 2)], { type: "application/json;charset=utf-8" });
+    const objectUrl = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    const host = (() => { try { return new URL(result.url).hostname.replace(/[^a-z0-9.-]/gi, "_"); } catch (_) { return "url"; } })();
+    link.href = objectUrl;
+    link.download = `scamlens-report-${host}-${new Date().toISOString().slice(0, 10)}.json`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(objectUrl);
+}
+
+function normalizeWatchlistInput(value) {
+    const trimmed = String(value || "").trim();
+    if (!trimmed) throw new Error("Enter a domain or URL first.");
+    let domain = trimmed;
+    if (/^https?:\/\//i.test(trimmed)) {
+        try { domain = new URL(trimmed).hostname; }
+        catch (_) { throw new Error("That URL does not look valid."); }
+    } else {
+        domain = trimmed.split(/[/?#]/)[0].replace(/^www\./i, "");
+    }
+    domain = domain.toLowerCase().replace(/\.$/, "");
+    if (!domain.includes(".") || /[\s:@]/.test(domain)) throw new Error("Enter a valid domain, such as example.com.");
+    return domain;
+}
+
+async function renderWatchlist() {
+    const list = document.getElementById("watchlistItems");
+    const message = document.getElementById("watchlistMessage");
+    if (!list || !message) return;
+    list.replaceChildren();
+    if (!window.scamlensCurrentUser || !window.scamlensLoadWatchlist) {
+        message.textContent = "Sign in to save and manage your personal domain watchlist.";
+        return;
+    }
+    try {
+        const items = await window.scamlensLoadWatchlist();
+        message.textContent = items.length ? `${items.length} saved domain${items.length === 1 ? "" : "s"}. Select Scan to check one again.` : "Your watchlist is empty.";
+        items.forEach(item => {
+            const row = document.createElement("article");
+            row.className = "watchlist-item";
+            const domain = document.createElement("strong");
+            domain.textContent = item.domain;
+            const actions = document.createElement("div");
+            actions.className = "watchlist-item-actions";
+            const scan = document.createElement("button");
+            scan.type = "button";
+            scan.className = "secondary-button";
+            scan.textContent = "Scan";
+            scan.addEventListener("click", () => {
+                document.getElementById("shoppingUrl").value = "https://" + item.domain + "/";
+                document.getElementById("scanner").scrollIntoView({ behavior: "smooth" });
+                document.getElementById("shoppingUrl").focus();
+            });
+            const remove = document.createElement("button");
+            remove.type = "button";
+            remove.className = "watchlist-remove";
+            remove.textContent = "Remove";
+            remove.addEventListener("click", async () => {
+                try {
+                    await window.scamlensRemoveWatchlistDomain(item.id);
+                    await renderWatchlist();
+                } catch (error) { message.textContent = error.message || "Could not remove that domain."; }
+            });
+            actions.append(scan, remove);
+            row.append(domain, actions);
+            list.appendChild(row);
+        });
+    } catch (error) {
+        message.textContent = "Could not load watchlist. Check your connection and Firestore rules.";
+        console.error("ScamLens watchlist load failed:", error);
+    }
+}
+
+const watchlistForm = document.getElementById("watchlistForm");
+if (watchlistForm) {
+    watchlistForm.addEventListener("submit", async event => {
+        event.preventDefault();
+        const input = document.getElementById("watchlistDomain");
+        const message = document.getElementById("watchlistMessage");
+        try {
+            if (!window.scamlensCurrentUser || !window.scamlensAddWatchlistDomain) {
+                throw new Error("Sign in before adding a domain to your watchlist.");
+            }
+            const domain = normalizeWatchlistInput(input.value);
+            await window.scamlensAddWatchlistDomain(domain);
+            input.value = "";
+            message.textContent = "Domain added to your watchlist.";
+            await renderWatchlist();
+        } catch (error) {
+            message.textContent = error.message || "Could not add that domain.";
+        }
+    });
+}
+window.addEventListener("scamlens-auth-changed", renderWatchlist);
+renderWatchlist();
 
         renderScanHistory();
 
@@ -3636,7 +3931,7 @@ const firebaseConfig = {
 
 
 
-const { auth, loadHistory, saveScan, deleteScan, clearHistory } = initializeScamLensFirebase(firebaseConfig);
+const { auth, loadHistory, saveScan, deleteScan, clearHistory, loadWatchlist, addWatchlistDomain, removeWatchlistDomain } = initializeScamLensFirebase(firebaseConfig);
 
 
 
@@ -3657,6 +3952,9 @@ window.scamlensDeleteCloudScan = deleteScan;
 
 
 window.scamlensClearCloudHistory = clearHistory;
+window.scamlensLoadWatchlist = loadWatchlist;
+window.scamlensAddWatchlistDomain = addWatchlistDomain;
+window.scamlensRemoveWatchlistDomain = removeWatchlistDomain;
 
 
 
