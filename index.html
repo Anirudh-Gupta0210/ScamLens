@@ -2110,15 +2110,64 @@ function createCard(title, subtitle) {
 
 
 
-    riskBadge.style.cssText = `display:inline-block;padding:8px 12px;border-radius:8px;background:#fff;color:${colour};font-size:12px;font-weight:700;`;
+    const riskColour = score >= 50 ? "#d93652" : score >= 25 ? "#c18400" : "#16834a";
+    riskBadge.style.cssText = `display:inline-block;padding:8px 12px;border-radius:8px;background:#fff;color:${riskColour};font-size:12px;font-weight:700;border:1px solid ${riskColour}30;`;
 
 
 
-    scoreRow.append(scoreBlock, riskBadge);
-
-
+    // Animated circular meter: uses the backend's real score (not a separate estimate).
+    const gauge = document.createElement("div");
+    gauge.className = "scan-score-gauge";
+    gauge.setAttribute("role", "img");
+    gauge.setAttribute("aria-label", `Preliminary risk score ${Math.max(0, Math.min(100, score))} out of 100`);
+    const gaugeSvg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+    gaugeSvg.setAttribute("viewBox", "0 0 100 100");
+    gaugeSvg.setAttribute("aria-hidden", "true");
+    const gaugeTrack = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+    gaugeTrack.setAttribute("class", "scan-score-gauge-track");
+    gaugeTrack.setAttribute("cx", "50"); gaugeTrack.setAttribute("cy", "50"); gaugeTrack.setAttribute("r", "40");
+    const gaugeProgress = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+    gaugeProgress.setAttribute("class", "scan-score-gauge-progress");
+    gaugeProgress.setAttribute("cx", "50"); gaugeProgress.setAttribute("cy", "50"); gaugeProgress.setAttribute("r", "40");
+    gaugeProgress.style.stroke = riskColour;
+    gaugeProgress.style.filter = `drop-shadow(0 1px 3px ${riskColour}55)`;
+    gaugeProgress.style.strokeDasharray = String(2 * Math.PI * 40);
+    gaugeProgress.style.strokeDashoffset = String(2 * Math.PI * 40);
+    gaugeSvg.append(gaugeTrack, gaugeProgress);
+    const gaugeCenter = document.createElement("div");
+    gaugeCenter.className = "scan-score-gauge-center";
+    const gaugeNumber = document.createElement("strong");
+    gaugeNumber.className = "scan-score-gauge-number";
+    gaugeNumber.textContent = "0";
+    const gaugeCaption = document.createElement("span");
+    gaugeCaption.textContent = "RISK SCORE";
+    gaugeCenter.append(gaugeNumber, gaugeCaption);
+    gauge.append(gaugeSvg, gaugeCenter);
+    scoreRow.classList.add("scan-score-summary");
+    scoreRow.append(scoreBlock, gauge, riskBadge);
 
     panel.appendChild(scoreRow);
+
+    // Animate only after the element is in the document, and respect reduced-motion settings.
+    const targetScore = Math.max(0, Math.min(100, Math.round(score)));
+    const circumference = 2 * Math.PI * 40;
+    const reducedMotion = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    requestAnimationFrame(() => {
+        gaugeProgress.style.strokeDashoffset = String(circumference * (1 - targetScore / 100));
+        if (reducedMotion) {
+            gaugeNumber.textContent = String(targetScore);
+            return;
+        }
+        const startTime = performance.now();
+        const duration = 850;
+        function animateScore(now) {
+            const progress = Math.min(1, (now - startTime) / duration);
+            const eased = 1 - Math.pow(1 - progress, 3);
+            gaugeNumber.textContent = String(Math.round(targetScore * eased));
+            if (progress < 1) requestAnimationFrame(animateScore);
+        }
+        requestAnimationFrame(animateScore);
+    });
 
 
 
@@ -2474,7 +2523,17 @@ function createCard(title, subtitle) {
             const header = document.createElement("div");
             header.style.cssText = "display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap;margin-bottom:5px;";
             const source = document.createElement("strong");
-            source.textContent = evidence.source || "Risk assessment";
+            const sourceLabel = String(evidence.source || "").trim();
+            const evidenceMessage = String(evidence.message || "").toLowerCase();
+            const descriptiveTitle = sourceLabel && !/^risk assessment$/i.test(sourceLabel) ? sourceLabel :
+                /urlhaus/.test(evidenceMessage) ? "URLhaus reputation check" :
+                /virustotal/.test(evidenceMessage) ? "VirusTotal threat report" :
+                /domain|registration|rdap/.test(evidenceMessage) ? "Domain registration signal" :
+                /redirect/.test(evidenceMessage) ? "Redirect behaviour check" :
+                /shopping|store|seller|payment/.test(evidenceMessage) ? "Shopping safety signal" :
+                /url|hostname|https|protocol|shortened|ip address/.test(evidenceMessage) ? "URL structure check" :
+                "Additional risk signal";
+            source.textContent = descriptiveTitle;
             source.style.cssText = "font-size:12px;color:#202632;";
             const points = document.createElement("span");
             const pointValue = Number(evidence.points);
@@ -3323,6 +3382,42 @@ function createCard(title, subtitle) {
 
 
 
+    // Investigation Dashboard: a compact overview of the actual checks returned by this scan.
+    const dashboardCard = createCard(
+        "Investigation Dashboard",
+        "A quick overview of the evidence available from this scan. Unavailable checks stay marked as unknown."
+    );
+    dashboardCard.classList.add("investigation-dashboard");
+    const dashboardGrid = document.createElement("div");
+    dashboardGrid.className = "investigation-dashboard-grid";
+    const dashboardTrust = result.trustProfile || {};
+    const dashboardAge = dashboardTrust.domainAge || {};
+    const dashboardRedirects = dashboardTrust.redirects || {};
+    const dashboardUrlhaus = result.urlhaus || result.reputation || {};
+    const dashboardVT = result.virusTotal || {};
+    const urlhausState = String(dashboardUrlhaus.status || status || "unavailable").toLowerCase();
+    const vtState = String(dashboardVT.status || vtStatus || "unavailable").toLowerCase();
+    const dashboardItems = [
+        { title: "URLhaus", detail: urlhausState === "listed" ? "Threat listing reported" : urlhausState === "not_listed" ? "No listing returned" : "Result unavailable", state: urlhausState === "listed" ? "warning" : ["not_listed"].includes(urlhausState) ? "good" : "unknown", icon: "⌕" },
+        { title: "VirusTotal", detail: Number(dashboardVT.malicious || 0) > 0 ? `${dashboardVT.malicious} malicious detection(s)` : ["analyzed", "malicious", "suspicious"].includes(vtState) ? "Existing report checked" : "No report available", state: Number(dashboardVT.malicious || 0) > 0 || vtState === "suspicious" ? "warning" : ["analyzed"].includes(vtState) ? "good" : "unknown", icon: "◈" },
+        { title: "Domain age", detail: dashboardAge.status === "checked" && Number.isFinite(Number(dashboardAge.ageDays)) ? `${dashboardAge.ageDays} days old` : "Not verified", state: dashboardAge.status === "checked" ? (Number(dashboardAge.ageDays) < 180 ? "warning" : "good") : "unknown", icon: "◷" },
+        { title: "Redirect check", detail: dashboardRedirects.status === "checked" ? (Array.isArray(dashboardRedirects.redirects) && dashboardRedirects.redirects.length ? `${dashboardRedirects.redirects.length} redirect hop(s) observed` : "No redirect observed") : (dashboardRedirects.message || "Not verified"), state: dashboardRedirects.status === "checked" ? (Array.isArray(dashboardRedirects.redirects) && dashboardRedirects.redirects.length ? "neutral" : "good") : "unknown", icon: "↗" }
+    ];
+    dashboardItems.forEach(item => {
+        const tile = document.createElement("div");
+        tile.className = `investigation-tile investigation-${item.state}`;
+        const top = document.createElement("div"); top.className = "investigation-tile-top";
+        const icon = document.createElement("span"); icon.className = "investigation-icon"; icon.textContent = item.icon; icon.setAttribute("aria-hidden", "true");
+        const badge = document.createElement("span"); badge.className = "investigation-state";
+        badge.textContent = item.state === "good" ? "Checked" : item.state === "warning" ? "Review" : item.state === "neutral" ? "Observed" : "Unknown";
+        top.append(icon, badge);
+        const title = document.createElement("strong"); title.textContent = item.title;
+        const detail = document.createElement("p"); detail.textContent = item.detail;
+        tile.append(top, title, detail); dashboardGrid.appendChild(tile);
+    });
+    dashboardCard.appendChild(dashboardGrid);
+    scanResults.appendChild(dashboardCard);
+
     // Final disclaimer
 
 
@@ -3504,22 +3599,30 @@ function createCard(title, subtitle) {
     journeyStatus.className = "redirect-journey-status";
     journeyStatus.textContent = journey.message || "Redirect inspection details are unavailable.";
     journeyCard.appendChild(journeyStatus);
-    const journeyList = document.createElement("ol");
-    journeyList.className = "redirect-journey-list";
-    const startStep = document.createElement("li");
-    startStep.textContent = "Submitted URL: " + (result.url || shoppingUrl.value.trim());
-    journeyList.appendChild(startStep);
+    const journeyFlow = document.createElement("div");
+    journeyFlow.className = "redirect-journey-flow";
+    const journeyNodes = [{ title: "Submitted URL", url: result.url || shoppingUrl.value.trim(), kind: "start" }];
     (Array.isArray(journey.redirects) ? journey.redirects : []).forEach((hop, index) => {
-        const step = document.createElement("li");
-        step.textContent = `Hop ${index + 1}${hop.statusCode ? " · HTTP " + hop.statusCode : ""}: ${hop.to || "Destination unavailable"}`;
-        journeyList.appendChild(step);
+        journeyNodes.push({ title: `Redirect hop ${index + 1}${hop.statusCode ? ` · HTTP ${hop.statusCode}` : ""}`, url: hop.to || "Destination unavailable", kind: "hop" });
     });
-    if (journey.finalUrl) {
-        const finalStep = document.createElement("li");
-        finalStep.textContent = "Observed final URL: " + journey.finalUrl;
-        journeyList.appendChild(finalStep);
+    const observedFinal = journey.finalUrl || (journeyNodes.length > 1 ? journeyNodes[journeyNodes.length - 1].url : (result.url || shoppingUrl.value.trim()));
+    if (journeyNodes.length === 1 || journeyNodes[journeyNodes.length - 1].url !== observedFinal) {
+        journeyNodes.push({ title: "Observed final URL", url: observedFinal, kind: "final" });
+    } else if (journeyNodes.length > 1) {
+        journeyNodes[journeyNodes.length - 1].title = "Observed final URL";
+        journeyNodes[journeyNodes.length - 1].kind = "final";
     }
-    journeyCard.appendChild(journeyList);
+    journeyNodes.forEach((node, index) => {
+        const item = document.createElement("div"); item.className = `redirect-flow-node redirect-flow-${node.kind}`;
+        const marker = document.createElement("span"); marker.className = "redirect-flow-marker"; marker.textContent = node.kind === "start" ? "1" : node.kind === "final" ? "✓" : String(index + 1); marker.setAttribute("aria-hidden", "true");
+        const content = document.createElement("div"); content.className = "redirect-flow-content";
+        const title = document.createElement("strong"); title.textContent = node.title;
+        const url = document.createElement("p"); url.textContent = node.url;
+        content.append(title, url); item.append(marker, content);
+        if (index < journeyNodes.length - 1) { const connector = document.createElement("div"); connector.className = "redirect-flow-connector"; connector.setAttribute("aria-hidden", "true"); item.appendChild(connector); }
+        journeyFlow.appendChild(item);
+    });
+    journeyCard.appendChild(journeyFlow);
     scanResults.appendChild(journeyCard);
 
     // Threat-intelligence coverage: distinguish clean/no-report responses from unavailable providers.

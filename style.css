@@ -3619,3 +3619,288 @@ body.theme-dark .watchlist-form input { background: #151b25; color: #edf1f7; bor
     .watchlist-form { flex-direction: column; }
     .watchlist-form button { width: 100%; }
 }
+
+
+/* ScamLens animated circular risk meter — matches the existing pink, clean dashboard style. */
+.scan-score-summary { display:flex; align-items:center; justify-content:space-between; gap:18px; flex-wrap:wrap; }
+.scan-score-summary > div:first-child { min-width:145px; }
+.scan-score-gauge { position:relative; flex:0 0 112px; width:112px; height:112px; display:grid; place-items:center; isolation:isolate; }
+.scan-score-gauge svg { position:absolute; inset:0; width:100%; height:100%; overflow:visible; transform:rotate(-90deg); }
+.scan-score-gauge-track, .scan-score-gauge-progress { fill:none; stroke-width:8; }
+.scan-score-gauge-track { stroke:rgba(104,115,133,.17); }
+.scan-score-gauge-progress { stroke-linecap:round; transition:stroke-dashoffset .85s cubic-bezier(.2,.75,.25,1); }
+.scan-score-gauge-center { display:flex; flex-direction:column; align-items:center; justify-content:center; gap:0; }
+.scan-score-gauge-number { color:var(--text, #202632); font-size:27px; font-weight:850; letter-spacing:-1px; line-height:1.1; font-variant-numeric:tabular-nums; }
+.scan-score-gauge-center span { margin-top:4px; color:var(--muted, #687385); font-size:8px; font-weight:850; letter-spacing:1px; }
+.scan-score-summary > span { max-width:190px; text-align:center; }
+body.theme-dark .scan-score-gauge-number { color:#edf1f7; }
+body.theme-dark .scan-score-gauge-track { stroke:rgba(170,180,196,.22); }
+body.theme-dark .scan-score-summary { color:#202632; }
+@media (max-width:600px) {
+  .scan-score-summary { justify-content:space-between; gap:14px; padding:15px !important; }
+  .scan-score-summary > div:first-child { min-width:0; flex:1 1 120px; }
+  .scan-score-gauge { flex-basis:94px; width:94px; height:94px; }
+  .scan-score-gauge-number { font-size:23px; }
+  .scan-score-summary > span { flex:1 1 100%; max-width:none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .scan-score-gauge-progress { transition:none; }
+}
+
+
+/* ScamLens refinements: risk colours, investigation dashboard, connected redirect journey. */
+.scan-score-gauge-progress { filter: drop-shadow(0 1px 3px rgba(255,63,108,.18)); }
+.scan-score-gauge { transition: transform .2s ease; }
+.scan-score-summary:focus-within .scan-score-gauge { transform: scale(1.02); }
+.investigation-dashboard-grid { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:12px; margin-top:8px; }
+.investigation-tile { min-width:0; padding:15px; border:1px solid var(--border,#e3e8f0); border-radius:12px; background:var(--card-bg,#fff); }
+.investigation-tile-top { display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:13px; }
+.investigation-icon { display:grid; place-items:center; width:34px; height:34px; border-radius:10px; background:#fff0f4; color:#ff3f6c; font-size:20px; font-weight:800; }
+.investigation-tile strong { display:block; color:var(--text,#202632); font-size:13px; }
+.investigation-tile p { margin:6px 0 0; color:var(--muted,#687385); font-size:12px; line-height:1.55; overflow-wrap:anywhere; }
+.investigation-state { display:inline-flex; align-items:center; padding:5px 8px; border-radius:999px; font-size:10px; font-weight:800; white-space:nowrap; }
+.investigation-good .investigation-state { color:#16834a; background:#eaf8ef; }
+.investigation-warning .investigation-state { color:#b42336; background:#fff0f2; }
+.investigation-neutral .investigation-state { color:#365fc7; background:#eef3ff; }
+.investigation-unknown .investigation-state { color:#687385; background:#eef1f5; }
+.investigation-good { border-top:3px solid #2da66b; }
+.investigation-warning { border-top:3px solid #d93652; }
+.investigation-neutral { border-top:3px solid #6685d9; }
+.investigation-unknown { border-top:3px solid #a8b0bd; }
+.redirect-journey-flow { display:grid; gap:0; margin-top:14px; }
+.redirect-flow-node { position:relative; display:grid; grid-template-columns:34px minmax(0,1fr); gap:12px; align-items:start; min-width:0; }
+.redirect-flow-marker { z-index:1; display:grid; place-items:center; width:32px; height:32px; border-radius:50%; background:#fff0f4; border:1px solid #ffc3d1; color:#ff3f6c; font-size:12px; font-weight:850; }
+.redirect-flow-final .redirect-flow-marker { background:#eaf8ef; border-color:#bce7cb; color:#16834a; }
+.redirect-flow-content { min-width:0; padding:10px 13px; margin-bottom:10px; border:1px solid var(--border,#e3e8f0); border-radius:10px; background:var(--background,#f5f6f8); }
+.redirect-flow-content strong { display:block; color:var(--text,#202632); font-size:12px; margin-bottom:5px; }
+.redirect-flow-content p { margin:0; color:var(--muted,#687385); font-size:12px; line-height:1.65; overflow-wrap:anywhere; word-break:break-word; }
+.redirect-flow-connector { position:absolute; left:15px; top:32px; bottom:-1px; width:2px; background:linear-gradient(#ff9ab2,#e3e8f0); }
+body.theme-dark .investigation-tile, html[data-theme="dark"] .investigation-tile { background:var(--card-bg,#202632); border-color:var(--border,#3b4350); }
+body.theme-dark .investigation-tile strong, html[data-theme="dark"] .investigation-tile strong,
+body.theme-dark .redirect-flow-content strong, html[data-theme="dark"] .redirect-flow-content strong { color:var(--text,#edf1f7); }
+body.theme-dark .redirect-flow-content, html[data-theme="dark"] .redirect-flow-content { background:var(--background,#171b22); border-color:var(--border,#3b4350); }
+body.theme-dark .scan-score-summary, html[data-theme="dark"] .scan-score-summary { color:inherit; }
+@media (max-width:850px) { .investigation-dashboard-grid { grid-template-columns:repeat(2,minmax(0,1fr)); } }
+@media (max-width:480px) { .investigation-dashboard-grid { grid-template-columns:1fr; } .investigation-tile { padding:13px; } }
+@media (prefers-reduced-motion: reduce) { .scan-score-gauge { transition:none; } }
+
+/* =========================================================
+   ScamLens dark-mode contrast repair
+   Covers landing-page cards, scan results, dashboards, forms and footer.
+   Keep accent buttons/badges colourful while making text readable.
+========================================================= */
+html[data-theme="dark"],
+html[data-theme="dark"] body,
+body.theme-dark {
+    --text: #edf1f7;
+    --muted: #b2bdcd;
+    --background: #11161e;
+    --white: #1b222d;
+    --border: #343e4d;
+    --card-bg: #1b222d;
+    --shadow: 0 16px 42px rgba(0,0,0,.22);
+    color: var(--text);
+    background: #11161e;
+    color-scheme: dark;
+}
+
+html[data-theme="dark"] body,
+body.theme-dark {
+    color: #edf1f7;
+    background-color: #11161e;
+}
+
+/* Shared panels and cards should not stay bright white in dark mode. */
+html[data-theme="dark"] .navbar,
+body.theme-dark .navbar,
+html[data-theme="dark"] .feature-card,
+body.theme-dark .feature-card,
+html[data-theme="dark"] .step-card,
+body.theme-dark .step-card,
+html[data-theme="dark"] .watchlist-panel,
+body.theme-dark .watchlist-panel,
+html[data-theme="dark"] .history-stat,
+body.theme-dark .history-stat,
+html[data-theme="dark"] .history-trend-card,
+body.theme-dark .history-trend-card,
+html[data-theme="dark"] .score-interpretation-guide,
+body.theme-dark .score-interpretation-guide,
+html[data-theme="dark"] .scan-results-card,
+body.theme-dark .scan-results-card,
+html[data-theme="dark"] .result-card,
+body.theme-dark .result-card,
+html[data-theme="dark"] .scan-card,
+body.theme-dark .scan-card,
+html[data-theme="dark"] .analysis-card,
+body.theme-dark .analysis-card,
+html[data-theme="dark"] .dashboard-card,
+body.theme-dark .dashboard-card {
+    color: #edf1f7;
+    background-color: #1b222d;
+    border-color: #343e4d;
+}
+
+/* Fix the specific white-card/white-text problem shown in the screenshot. */
+html[data-theme="dark"] .step-card h3,
+body.theme-dark .step-card h3,
+html[data-theme="dark"] .step-card h2,
+body.theme-dark .step-card h2,
+html[data-theme="dark"] .feature-card h3,
+body.theme-dark .feature-card h3,
+html[data-theme="dark"] .feature-card h2,
+body.theme-dark .feature-card h2,
+html[data-theme="dark"] .section-heading h2,
+body.theme-dark .section-heading h2 {
+    color: #f3f6fb !important;
+}
+
+html[data-theme="dark"] .step-card p,
+body.theme-dark .step-card p,
+html[data-theme="dark"] .feature-card p,
+body.theme-dark .feature-card p,
+html[data-theme="dark"] .section-heading p,
+body.theme-dark .section-heading p,
+html[data-theme="dark"] .how-section p,
+body.theme-dark .how-section p {
+    color: #b7c1d0 !important;
+}
+
+html[data-theme="dark"] .step-card,
+body.theme-dark .step-card {
+    background: #1b222d !important;
+    border-color: #343e4d !important;
+    box-shadow: 0 12px 30px rgba(0,0,0,.16);
+}
+
+html[data-theme="dark"] .step-icon,
+body.theme-dark .step-icon { background: #202f49; color: #70a5ff; }
+html[data-theme="dark"] .step-number,
+body.theme-dark .step-number { color: #fff; }
+html[data-theme="dark"] .how-section,
+body.theme-dark .how-section { background: #11161e; }
+
+/* General text hierarchy: prevent inherited white text on pale surfaces. */
+html[data-theme="dark"] h1,
+body.theme-dark h1,
+html[data-theme="dark"] h2,
+body.theme-dark h2,
+html[data-theme="dark"] h3,
+body.theme-dark h3,
+html[data-theme="dark"] h4,
+body.theme-dark h4,
+html[data-theme="dark"] h5,
+body.theme-dark h5,
+html[data-theme="dark"] h6,
+body.theme-dark h6,
+html[data-theme="dark"] label,
+body.theme-dark label,
+html[data-theme="dark"] .history-stat strong,
+body.theme-dark .history-stat strong,
+html[data-theme="dark"] .history-trend-value,
+body.theme-dark .history-trend-value {
+    color: #edf1f7;
+}
+
+html[data-theme="dark"] p,
+body.theme-dark p,
+html[data-theme="dark"] li,
+body.theme-dark li,
+html[data-theme="dark"] .muted,
+body.theme-dark .muted,
+html[data-theme="dark"] .history-stat-label,
+body.theme-dark .history-stat-label,
+html[data-theme="dark"] .history-stat-note,
+body.theme-dark .history-stat-note,
+html[data-theme="dark"] .history-trend-heading p,
+body.theme-dark .history-trend-heading p,
+html[data-theme="dark"] .history-trend-key,
+body.theme-dark .history-trend-key {
+    color: #b7c1d0;
+}
+
+/* Results and explanatory panels. */
+html[data-theme="dark"] .scan-interpretation,
+body.theme-dark .scan-interpretation,
+html[data-theme="dark"] .score-interpretation-guide,
+body.theme-dark .score-interpretation-guide,
+html[data-theme="dark"] .scan-coverage-item,
+body.theme-dark .scan-coverage-item,
+html[data-theme="dark"] .investigation-tile,
+body.theme-dark .investigation-tile,
+html[data-theme="dark"] .redirect-flow-content,
+body.theme-dark .redirect-flow-content,
+html[data-theme="dark"] .intel-source-item,
+body.theme-dark .intel-source-item,
+html[data-theme="dark"] .watchlist-item,
+body.theme-dark .watchlist-item,
+html[data-theme="dark"] .history-trend-track,
+body.theme-dark .history-trend-track {
+    background: #151b25;
+    border-color: #343e4d;
+}
+
+html[data-theme="dark"] .scan-interpretation strong,
+body.theme-dark .scan-interpretation strong,
+html[data-theme="dark"] .scan-coverage-top strong,
+body.theme-dark .scan-coverage-top strong,
+html[data-theme="dark"] .investigation-tile strong,
+body.theme-dark .investigation-tile strong,
+html[data-theme="dark"] .redirect-flow-content strong,
+body.theme-dark .redirect-flow-content strong,
+html[data-theme="dark"] .intel-source-item strong,
+body.theme-dark .intel-source-item strong,
+html[data-theme="dark"] .watchlist-item strong,
+body.theme-dark .watchlist-item strong {
+    color: #edf1f7;
+}
+
+html[data-theme="dark"] .scan-interpretation p,
+body.theme-dark .scan-interpretation p,
+html[data-theme="dark"] .scan-coverage-item p,
+body.theme-dark .scan-coverage-item p,
+html[data-theme="dark"] .investigation-tile p,
+body.theme-dark .investigation-tile p,
+html[data-theme="dark"] .redirect-flow-content p,
+body.theme-dark .redirect-flow-content p,
+html[data-theme="dark"] .intel-source-item p,
+body.theme-dark .intel-source-item p {
+    color: #b7c1d0;
+}
+
+/* Inputs, selects and textareas. */
+html[data-theme="dark"] input:not([type="checkbox"]):not([type="radio"]),
+body.theme-dark input:not([type="checkbox"]):not([type="radio"]),
+html[data-theme="dark"] textarea,
+body.theme-dark textarea,
+html[data-theme="dark"] select,
+body.theme-dark select {
+    color: #edf1f7;
+    background-color: #151b25;
+    border-color: #3a4555;
+}
+html[data-theme="dark"] input::placeholder,
+body.theme-dark input::placeholder,
+html[data-theme="dark"] textarea::placeholder,
+body.theme-dark textarea::placeholder { color: #8996a9; opacity: 1; }
+
+/* Keep contrast strong for tables, navigation and secondary footer text. */
+html[data-theme="dark"] table,
+body.theme-dark table,
+html[data-theme="dark"] th,
+body.theme-dark th,
+html[data-theme="dark"] td,
+body.theme-dark td { color: #dce3ed; border-color: #343e4d; }
+html[data-theme="dark"] .navbar a,
+body.theme-dark .navbar a { color: #dce3ed; }
+html[data-theme="dark"] .navbar a:hover,
+body.theme-dark .navbar a:hover { color: #ff6b8d; }
+html[data-theme="dark"] .scan-risk-meter-track,
+body.theme-dark .scan-risk-meter-track { background: #303846; }
+html[data-theme="dark"] .scan-score-summary,
+body.theme-dark .scan-score-summary { color: #202632; }
+html[data-theme="dark"] .scan-score-gauge-number,
+body.theme-dark .scan-score-gauge-number { color: #edf1f7; }
+
+@media (prefers-reduced-motion: reduce) {
+    html { scroll-behavior: auto; }
+}
